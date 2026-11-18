@@ -519,7 +519,7 @@ function verdict() {
 // ---------- text outputs ----------
 function fmtStart(ms) { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
 function fmtDur(ms) { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
-const SETTINGS_KEY = 'S one active option per predicate, E answer fits one option per card, U one solution, W workbook does work, H highlighter; + yes, - no.';
+const SETTINGS_KEY = 'S one secret option per predicate, E answer fits one option per card, U one solution, W workbook does work, H highlighter; + yes, - no.';
 function settingsLine() { const a = S.aids || { w: false, h: false }, f = b => b ? '+' : '-'; return 'Settings S' + f(P.singleOption) + ' E' + f(!P.overlap) + ' U' + f(P.solutions === 1) + ' W' + f(a.w) + ' H' + f(a.h); }
 function headLines(withTime) { return [TITLE + ' ' + P.gid + (withTime ? ' ' + fmtStart(S.startedAt) : '')].concat(S.gotd ? ['Game of the day ' + S.gotd] : [], [settingsLine()], S.hint ? ['Hint used'] : [], S.imported ? ['Imported table'] : []); }
 function shareText(v) {
@@ -605,7 +605,7 @@ function rowStatus(i) {
   if (!p) return { ok: false, bad: false, text: '' };
   let mask = 0;
   for (const c of cards) { const k = PRED[p.id].o.findIndex(o => o[1] === c); if (k < 0) return { ok: false, bad: true, text: name + '. That checker number belongs to a different predicate.' }; mask |= 1 << k; }
-  return { ok: true, bad: false, text: name + (cards.length > 1 ? ' (' + cards.length + ' active options)' : ''), extra: cards.length > 1 ? cards.length + ' active options' : '', pid: p.id, mask };
+  return { ok: true, bad: false, text: name + (cards.length > 1 ? ' (' + cards.length + ' secret options)' : ''), extra: cards.length > 1 ? cards.length + ' secret options' : '', pid: p.id, mask };
 }
 const rowMsg = st => st.bad ? st.text : (st.extra || '');
 const GROUPS = [[101, 'One digit against a number'], [116, 'One digit: even, odd or prime'], [122, 'Counting digits'], [132, 'Two digits'], [141, 'Sums and products'], [154, 'Shape of the whole code'], [168, 'Which digit or pair (the choice is hidden)']];
@@ -653,12 +653,12 @@ function loadEntry(text) {   // returns false, or 'code' | 'summary'
 function rivalDiff() { return S.turns - S.rival.turns || S.evals - S.rival.evals; }
 function rivalWord(r) { return plural(r.turns, 'turn') + ', ' + plural(r.evals, 'evaluation') + (r.wrong ? ', ' + plural(r.wrong, 'wrong guess', 'wrong guesses') : '') + (r.hint ? ', with a hint' : ''); }
 const MODES = [
-  ['single', 'Single predicate active from each group?', ' checkers which make multiple predicate conditions active', 'Do not use', 'Use'],
-  ['excl', 'Exclusive predicates only?', ' games with solutions that satisfy multiple conditions from one predicate card', 'Do not show', 'Show'],
+  ['single', 'One secret option per predicate?', ' games where a predicate has more than one secret option', 'Do not show', 'Show'],
+  ['excl', 'Exclusive predicates only?', ' games where the secret code fits more than one listed option on a card', 'Do not show', 'Show'],
   ['uniq', 'Unique answers only?', ' games with multiple answers', 'Do not show', 'Show']];
 function optsHtml() {
-  return '<div class="opts"><label class="opt"><input type="checkbox" id="work" data-fk="work"' + (WORK ? ' checked' : '') + '><span>Workbook does work: a selected number rules out the other numbers' + (!P || P.singleOption || view !== 'play' ? ', and a selected predicate condition rules out the others on its card' : '') + (view !== 'play' ? ' (conditions only when each predicate has one active)' : '') + '</span></label>'
-    + '<label class="opt"><input type="checkbox" id="hl" data-fk="hl"' + (HL ? ' checked' : '') + '><span>Highlight the predicate conditions the current code falls under</span></label></div>';
+  return '<div class="opts"><label class="opt"><input type="checkbox" id="work" data-fk="work"' + (WORK ? ' checked' : '') + '><span>Workbook does work: a circled digit crosses out the rest of its column' + (!P || P.singleOption || view !== 'play' ? ', and a circled option crosses out the rest of its card' : '') + (view !== 'play' ? ' (options only when each predicate has one secret option)' : '') + '</span></label>'
+    + '<label class="opt"><input type="checkbox" id="hl" data-fk="hl"' + (HL ? ' checked' : '') + '><span>Highlight the options the current code satisfies</span></label></div>';
 }
 const canPlay = () => !!(form.report && form.report.pz && form.report.pz.solutions > 0);
 function playWord() { const s = canPlay() && load(form.report.pz.gid); return s && !s.won ? 'Resume' : 'Play'; }
@@ -671,9 +671,9 @@ function reportHtml(play) {
   if (rp.error) return '<p class="status bad">' + esc(rp.error) + '</p>';
   const pz = rp.pz, n = pz.solutions, saved = load(pz.gid); let h = (form.gotd && form.gotd.gid === pz.gid ? '<p class="rep"><b>Game of the day for ' + esc(form.gotd.date) + '</b>' + (form.gotd.other ? ', as your friend played it.' : ', for your game modes.') + '</p>' : '') + (form.rival && form.rival.gid === pz.gid ? '<p class="rep"><b>Your friend’s score:</b> ' + rivalWord(form.rival) + '.</p>' : '') + (form.note ? '<p class="rep muted">' + esc(form.note) + '</p>' : '') + '<p class="rep">';
   h += n === 1 ? 'One solution.' : n === 0 ? 'No solution. No guess could be correct, so this puzzle cannot be played.' : 'More than one solution.' + (form.show ? ' There are ' + n + '.' : '');
-  h += '</p><p class="rep">' + (pz.singleOption ? 'One active option per predicate.' : 'Some predicates have more than one active option.') + '</p>';
+  h += '</p><p class="rep">' + (pz.singleOption ? 'One secret option per predicate.' : 'Some predicates have more than one secret option.') + '</p>';
   if (n > 0) h += '<p class="rep">' + (pz.overlap ? 'On at least one predicate, the answer fits more than one of the listed options.' : 'On every predicate, the answer fits exactly one of the listed options.') + '</p>';
-  const out = []; if (MODE.single && !pz.singleOption) out.push('single predicate active'); if (MODE.excl && pz.overlap) out.push('exclusive predicates'); if (MODE.uniq && n > 1) out.push('unique answers');
+  const out = []; if (MODE.single && !pz.singleOption) out.push('one secret option per predicate'); if (MODE.excl && pz.overlap) out.push('exclusive predicates'); if (MODE.uniq && n > 1) out.push('unique answers');
   if (n > 0 && out.length) h += '<p class="rep muted">This puzzle is outside the game modes you ticked (' + out.join(', ') + '). You can still play it.</p>';
   if (n > 0 && (play || (n > 1 && !form.show))) h += '<div class="endb">' + (play ? '<button class="primary" data-act="play">' + playWord() + '</button>' : '') + (n > 1 && !form.show ? '<button class="ghost" data-act="count">Show count</button>' : '') + '</div>';
   return h;
@@ -703,7 +703,7 @@ function renderSetup() {
   h += '<div class="lbl">Random game</div><div class="start"><button class="foldsel" data-act="fold" data-f="fmodes" aria-expanded="' + !!form.fmodes + '">' + (form.fmodes ? '▾ ' : '▸ ') + modesWord() + '</button><button class="primary" data-act="rand-play">Play</button></div>';
   if (form.fmodes) {
     h += '<div class="opts">' + MODES.map(m => '<label class="opt"><input type="checkbox" id="mode-' + m[0] + '"' + (MODE[m[0]] ? ' checked' : '') + '><span><b>' + m[1] + '</b> <span id="modetxt-' + m[0] + '">' + (MODE[m[0]] ? m[3] : m[4]) + m[2] + '</span></span></label>').join('') + '</div>';
-    h += '<p class="hint">A ticked mode is guaranteed; an unticked one is left to chance. The modes also decide which game of the day you get, which starter puzzles the list shows, and what the Randomize buttons make.</p>';
+    h += '<p class="hint">A ticked mode is guaranteed; an unticked one is left to chance. The modes also decide which game of the day you get, which starter puzzles the list shows, and what the New buttons make.</p>';
   }
   h += '<div class="lbl">Game code</div><div class="start"><input id="code" aria-label="Game code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="a code, or a friend’s summary" value="' + esc(form.code) + '"><button class="primary" id="codeplay" data-act="play"' + (canPlay() ? '' : ' disabled') + '>' + playWord() + '</button><select id="bank" aria-label="Game list">' + bankHtml() + '</select></div>';
   h += '<span class="res' + (form.codeBad ? ' bad' : '') + '" id="codemsg">' + (form.codeBad ? 'That is not a game code or a summary.' : '') + '</span><div id="report">' + reportHtml(false) + '</div>';
@@ -711,9 +711,9 @@ function renderSetup() {
   h += '<div class="lbl">Build a puzzle</div><div class="start"><button class="foldsel" data-act="fold" data-f="fbuild" aria-expanded="' + !!form.fbuild + '">' + (form.fbuild ? '\u25be ' : '\u25b8 ') + 'Predicates and checkers</button></div>';
   if (form.fbuild) {
     h += '<div id="rows">' + rowsHtml() + '</div>';
-    h += '<div class="endb"><button class="ghost" data-act="add">Add a predicate</button><button class="ghost" data-act="rand-preds">Randomize predicates</button><button class="ghost" data-act="rand-active">Randomize active options</button><button class="primary" data-act="check">Check puzzle</button></div>';
+    h += '<div class="endb"><button class="ghost" data-act="add">Add a predicate</button><button class="ghost" data-act="rand-preds">New predicates</button><button class="ghost" data-act="rand-active">New secret options</button><button class="primary" data-act="check">Check puzzle</button></div>';
     h += '<div id="report2">' + reportHtml(true) + '</div>';
-    h += '<p class="hint">These lines and the game code are the same puzzle; changing either updates the other. Pick each predicate from its list or type its number (they run from 101); checker numbers run from 1000. For two active options on one predicate, type both checker numbers in its box. Randomize uses as many predicates as there are lines. Turing Machine criteria numbers (1 to 48) and verification numbers (201 to 798) are converted automatically.</p>';
+    h += '<p class="hint">These lines and the game code are the same puzzle; changing either updates the other. Pick each predicate from its list or type its number (they run from 101); checker numbers run from 1000. Each line\u2019s checker number names its secret option; for two secret options on one predicate, type both checker numbers in its box. New predicates uses as many predicates as there are lines. Turing Machine criteria numbers (1 to 48) and verification numbers (201 to 798) are converted automatically.</p>';
   }
   h += '<h2>Aids</h2>' + optsHtml();
   h += '</section>';
@@ -735,7 +735,7 @@ function renderPlay() {
   const canEval = !S.won && eff.length >= 1 && eff.length <= 3, canKnow = !S.won && eff.length === 0;
   let h = '<header class="top"><h1>' + TITLE + '</h1><div class="tools"><button class="ghost" data-act="tutorial" data-fk="tut">How to play</button>' + (S.won ? '' : '<button class="ghost" data-act="hint" data-fk="hint">' + (ui.hint ? 'Hide hint' : 'Hint') + '</button>') + '<button class="ghost" data-act="export" data-fk="export">Export</button><button class="ghost" data-act="restart" data-fk="restart">Restart</button><button class="ghost" data-act="setup" data-fk="setup">New puzzle</button></div>';
   h += '<div class="meta"><span><span class="lbl">Game</span> <b>' + P.gid + '</b></span>' + (S.gotd ? '<span><span class="lbl">Game of the day</span> <b>' + esc(S.gotd) + '</b></span>' : '') + '<span><span class="lbl">' + (S.won ? 'Turns</span> <b>' + S.turns : 'Turn</span> <b>' + (S.turns + 1)) + '</b></span><span><span class="lbl">Evaluations</span> <b>' + S.evals + '</b></span>' + (S.rival ? '<span class="rival"><span class="lbl">Friend</span> <b>' + rivalWord(S.rival) + '</b></span>' : '') + '</div></header>';
-  h += '<section class="facts"><div class="lbl">Puzzle facts</div><p>' + (P.solutions === 1 ? 'One solution' : S.showCount ? P.solutions + ' solutions' : 'More than one solution') + '</p><p>' + (P.singleOption ? 'One active option per predicate' : 'Some predicates have more than one active option') + '</p><p>' + (P.overlap ? 'The answer fits more than one listed option on at least one predicate' : 'The answer fits exactly one listed option on every predicate') + '</p></section>';
+  h += '<section class="facts"><div class="lbl">Puzzle facts</div><p>' + (P.solutions === 1 ? 'One solution' : S.showCount ? P.solutions + ' solutions' : 'More than one solution') + '</p><p>' + (P.singleOption ? 'One secret option per predicate' : 'Some predicates have more than one secret option') + '</p><p>' + (P.overlap ? 'The answer fits more than one listed option on at least one predicate' : 'The answer fits exactly one listed option on every predicate') + '</p></section>';
   h += '<section class="board" style="--n:' + n + '" aria-label="Truth table"><div class="lbl">Truth table</div><div class="row head">' + DIG.map(d => '<span class="c">' + d + '</span>').join('') + LET.slice(0, n).map(l => '<span class="c">' + l + '</span>').join('') + '<span class="c"></span></div>';
   S.rows.forEach((r, ri) => {
     h += '<div class="row hist' + (r.guess ? ' guess' : '') + '">';
@@ -792,14 +792,16 @@ function render() { if (view === 'play' && P && S) renderPlay(); else renderSetu
 // ---------- dialogs ----------
 const TUTORIAL = '<h2>How to play</h2>'
   + '<p><b>Goal.</b> Find the secret code: three digits <i>x</i>, <i>y</i>, <i>z</i>, each from 1 to 5.</p>'
-  + '<p><b>Predicates.</b> Each lettered card (P, Q, R…) lists a few conditions, such as “x &lt; 3”, “x = 3”, “x &gt; 3”. One of them is secretly switched on. The secret code satisfies the switched-on condition on every card.</p>'
-  + '<p><b>A turn.</b> Set any code with + and −, tick up to three predicates, and press Evaluate. Each ticked predicate answers ⊤ (true) if <i>your</i> code satisfies its switched-on condition, and ⊥ (false) if it does not.</p>'
-  + '<p><b>Reading answers.</b> An answer is about the code you tried, not about how close you are. If “x compared to 3” says ⊤ for 425, the switched-on condition is one that 425 satisfies, so it must be “x &gt; 3”. Work out which condition each card is using, then find the one code that fits them all.</p>'
-  + '<p><b>Careful.</b> On some cards the conditions overlap (“x is prime”, “y is prime”…). Only the switched-on one counts, even if your code also satisfies another. The line under the game code tells you whether the answer fits more than one listed condition anywhere.</p>'
+  + '<p><b>Predicates.</b> Each lettered card (P, Q, R…) asks one question about the code and lists a few options, such as “x &lt; 3”, “x = 3”, “x &gt; 3”.</p>'
+  + '<p><b>Secret options.</b> On every card, one option is the <i>secret option</i>: the one that card is really checking. Which one is hidden, and finding out is the game. The secret code satisfies the secret option on every card. Usually each card has exactly one; if the puzzle facts say a predicate can have more than one, the secret code satisfies at least one of them.</p>'
+  + '<p><b>A turn.</b> Set any code with + and −, tick up to three predicates, and press Evaluate. Each ticked predicate answers ⊤ (true) if <i>your</i> code satisfies its secret option, and ⊥ (false) if it does not.</p>'
+  + '<p><b>Reading answers.</b> An answer is about the code you tried, not about how close you are. If “x compared to 3” says ⊤ for 425, the secret option is one that 425 satisfies, so it must be “x &gt; 3”. Work out each card’s secret option, then find the one code that fits them all.</p>'
+  + '<p><b>Careful.</b> On some cards the options overlap (“x is prime”, “y is prime”…), so a code can satisfy several. Only the secret option counts, even if your code also satisfies another. The puzzle facts say whether the secret code itself fits more than one listed option anywhere.</p>'
   + '<p><b>Guessing.</b> With nothing ticked, press “I know the answer”. A right guess wins. A wrong guess shows that code against every predicate (marked †) and costs the turns those evaluations would have cost.</p>'
-  + '<p><b>Worksheet.</b> Below the table: tap a digit or condition to cross it out, press and hold to circle it. It is your scratch paper; by default the game does no thinking for you. Two options at the bottom can change that.</p>'
+  + '<p><b>Worksheet.</b> Below the table: tap a digit or option to cross it out, press and hold to circle it. It is your scratch paper; by default the game does no thinking for you. Two aids at the bottom of the screen can change that.</p>'
   + '<p><b>Score.</b> Fewer turns is better, then fewer evaluations. At the end you see how soon careful crossing-out on the worksheet would have found the code from the same answers.</p>'
-  + '<p><b>Hints and the review.</b> Hint shows a worksheet filled in from your answers so far, with the reason for each mark. It uses two rules: cross out a condition that an answer contradicts, and cross out a digit value when some card has no remaining condition that allows it. Your summary will then say \u201cHint used\u201d. After a game you can step through the same worksheet turn by turn.</p>'
+  + '<p><b>Building a puzzle.</b> Under \u201cBuild a puzzle\u201d each line is one card: a predicate number and the checker number of its secret option. \u201cNew predicates\u201d swaps the cards and keeps nothing else; \u201cNew secret options\u201d keeps the cards and picks new secret options. Both follow the game modes. Typing two checker numbers on one line gives that card two secret options.</p>'
+  + '<p><b>Hints and the review.</b> Hint shows a worksheet filled in from your answers so far, with the reason for each mark. It uses two rules: cross out an option that an answer contradicts, and cross out a digit value when some card has no remaining option that allows it. Your summary will then say \u201cHint used\u201d. After a game you can step through the same worksheet turn by turn.</p>'
   + '<p><b>Playing a friend\u2019s game.</b> Paste their summary into the Game code box. You get the same puzzle, and their score stays on screen to beat. Your own summary then says how you compared.</p>'
   + '<p><b>Passing a game on.</b> “Export table” works at any point in a game. “Import a table” on the New puzzle screen loads one: an unfinished table continues from its last row, a finished one opens on its analysis. Worksheet marks do not travel, and an imported game says “Imported table” in its summary.</p>';
 function closeModal() { modal.hidden = true; modal.innerHTML = ''; modal.onclick = null; }
@@ -910,7 +912,7 @@ app.addEventListener('click', async e => {
     else {
       let r = null; for (let i = 0; i < 12 && !(r && r.clean); i++) { const x = findActive(pids, wantFromModes(Math.random), Math.random, 40000); if (x && (!r || x.clean)) r = x; }
       if (r) { loadCode(encodeGame(pids, r.masks)); if (!r.clean) form.note = 'With these predicates, at least one of them adds nothing to the puzzle.'; }
-      else form.report = { error: 'No choice of active options turns these predicates into a puzzle in the ticked modes. Change a predicate or untick a mode.' };
+      else form.report = { error: 'No choice of secret options turns these predicates into a puzzle in the ticked modes. Change a predicate or untick a mode.' };
     }
     render();
   }
