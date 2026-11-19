@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Crack the Code!</title>
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="icon" href="favicon.ico" sizes="16x16 32x32">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" id="ico-svg" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" id="ico-ico" href="favicon.ico" sizes="16x16 32x32">
+<link rel="apple-touch-icon" id="ico-apple" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="Crack the Code!">
 <meta name="theme-color" content="#ffffff">
 <style>
@@ -289,6 +289,9 @@ function applyTheme() {
   if (!THEMES.some(x => x[0] === THEME)) THEME = 'auto';
   const r = document.documentElement; if (THEME === 'auto') delete r.dataset.theme; else r.dataset.theme = THEME;
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = getComputedStyle(r).getPropertyValue('--paper').trim() || '#ffffff';
+  // icons follow the page: dark icons whenever the page is dark (an icon added to a home screen keeps the one in use at that moment)
+  const dk = THEME === 'dark' || THEME === 'black' || (THEME === 'auto' && !!window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches), sfx = dk ? '-dark' : '';
+  [['ico-svg', 'favicon', '.svg'], ['ico-ico', 'favicon', '.ico'], ['ico-apple', 'apple-touch-icon', '.png']].forEach(([id, base, ext]) => { const l = document.getElementById(id); if (l && l.setAttribute && l.getAttribute('href') !== base + sfx + ext) l.setAttribute('href', base + sfx + ext); });
 }
 applyTheme();
 if (window.matchMedia) { const mq = matchMedia('(prefers-color-scheme: dark)'); const f = () => { if (THEME === 'auto') applyTheme(); }; if (mq.addEventListener) mq.addEventListener('change', f); }
