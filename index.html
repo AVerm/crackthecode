@@ -8,11 +8,12 @@
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="Crack the Code!">
+<meta name="theme-color" content="#ffffff">
 <style>
 /* Layout idea: a bare white page from a logic workbook. Ink, two hairlines, and blue only where the game is pointing at something. */
 :root{
   --paper:#ffffff; --ink:#111418; --muted:#646c78; --faint:#cfd4db; --zone:#f1f4f9; --ctl:#e6eaf0;
-  --accent:#1d4ed8; --accent-ink:#ffffff; --hl:#d9e5ff; --true:#0b6e55; --false:#b02a1f; --contra:#fde3df;
+  --accent:#1d4ed8; --accent-ink:#ffffff; --hl:#d9e5ff; --true:#0b6e55; --false:#b02a1f; --contra:#fde3df; --gone:#9aa1ac;
   --math:"STIX Two Text","Cambria Math",Cambria,"Times New Roman",Times,serif;
   --ui:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   color-scheme:light;
@@ -20,12 +21,16 @@
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --paper:#0f1216; --ink:#e9edf2; --muted:#98a1ad; --faint:#39414c; --zone:#181d25; --ctl:#2a323d;
-    --accent:#8fb0ff; --accent-ink:#0f1216; --hl:#1e3465; --true:#57d3ab; --false:#ff8f84; --contra:#4a211d; color-scheme:dark;
+    --accent:#8fb0ff; --accent-ink:#0f1216; --hl:#1e3465; --true:#57d3ab; --false:#ff8f84; --contra:#4a211d; --gone:#59616c; color-scheme:dark;
   }
+}
+:root[data-theme="black"]{
+  --paper:#000000; --ink:#f2f2f2; --muted:#8b929c; --faint:#2b2f35; --zone:#121417; --ctl:#23272d;
+  --accent:#8fb0ff; --accent-ink:#000000; --hl:#172648; --true:#57d3ab; --false:#ff8f84; --contra:#3d1814; --gone:#555b63; color-scheme:dark;
 }
 :root[data-theme="dark"]{
   --paper:#0f1216; --ink:#e9edf2; --muted:#98a1ad; --faint:#39414c; --zone:#181d25; --ctl:#2a323d;
-  --accent:#8fb0ff; --accent-ink:#0f1216; --hl:#1e3465; --true:#57d3ab; --false:#ff8f84; --contra:#4a211d; color-scheme:dark;
+  --accent:#8fb0ff; --accent-ink:#0f1216; --hl:#1e3465; --true:#57d3ab; --false:#ff8f84; --contra:#4a211d; --gone:#59616c; color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -175,7 +180,7 @@ pre.out{margin:0;font-family:var(--math);font-size:15px;white-space:pre-wrap;ove
 .spopts .letter{font-size:14px;margin-right:6px}
 .spopts span{margin-right:9px;white-space:nowrap;display:inline-block}
 .spopts .only{font-weight:600}
-.sp .off{color:var(--faint);text-decoration:line-through}
+.sp .off{color:var(--gone);text-decoration:line-through}
 .sp .off.new{color:var(--accent)}
 .spwhy{font-size:13px}
 .spwhy p{margin:0 0 3px;color:var(--muted)} .spwhy p b{color:var(--ink);font-family:var(--math);font-size:14.5px}
@@ -245,6 +250,9 @@ pre.out{margin:0;font-family:var(--math);font-size:15px;white-space:pre-wrap;ove
 .nojs{max-width:34rem;margin:0 auto;padding:18px 16px;font-family:var(--ui);color:var(--ink);line-height:1.45}
 .nojs h1{font-family:var(--math);font-style:italic;font-weight:600;font-size:26px;letter-spacing:.01em;margin:0 0 18px}
 .nojs p{margin:0 0 10px}
+.theme{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px}
+.theme>span{font-size:14px;margin-right:4px}
+.theme button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
 </style>
 </head>
 <body>
@@ -273,6 +281,16 @@ const form = { gotd: null, note: '', gdate: '', code: '', codeBad: false, rows: 
 const getPref = (k, d) => { try { const v = localStorage.getItem(KEY + ':' + k); return v === null ? d : v === '1'; } catch (e) { return d; } };
 const setPref = (k, v) => { try { localStorage.setItem(KEY + ':' + k, v ? '1' : '0'); } catch (e) {} };
 let HL = getPref('hl', false), WORK = getPref('work', false);
+// Theme: 'auto' follows the device; the rest force a palette from the stylesheet.
+const THEMES = [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']];
+let THEME = (() => { try { return localStorage.getItem(KEY + ':theme') || 'auto'; } catch (e) { return 'auto'; } })();
+function applyTheme() {
+  if (!THEMES.some(x => x[0] === THEME)) THEME = 'auto';
+  const r = document.documentElement; if (THEME === 'auto') delete r.dataset.theme; else r.dataset.theme = THEME;
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = getComputedStyle(r).getPropertyValue('--paper').trim() || '#ffffff';
+}
+applyTheme();
+if (window.matchMedia) { const mq = matchMedia('(prefers-color-scheme: dark)'); const f = () => { if (THEME === 'auto') applyTheme(); }; if (mq.addEventListener) mq.addEventListener('change', f); }
 const MODE = { single: getPref('m-single', true), excl: getPref('m-excl', true), uniq: getPref('m-uniq', true) };
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -666,7 +684,8 @@ const MODES = [
   ['uniq', 'Unique answers only?', ' games with multiple answers', 'Do not show', 'Show']];
 function optsHtml() {
   return '<div class="opts"><label class="opt"><input type="checkbox" id="work" data-fk="work"' + (WORK ? ' checked' : '') + '><span>Workbook does work: a circled digit crosses out the rest of its column' + (!P || P.singleOption || view !== 'play' ? ', and a circled option crosses out the rest of its card' : '') + (view !== 'play' ? ' (options only when each predicate has one secret option)' : '') + '</span></label>'
-    + '<label class="opt"><input type="checkbox" id="hl" data-fk="hl"' + (HL ? ' checked' : '') + '><span>Highlight the options the current code satisfies</span></label></div>';
+    + '<label class="opt"><input type="checkbox" id="hl" data-fk="hl"' + (HL ? ' checked' : '') + '><span>Highlight the options the current code satisfies</span></label>'
+    + '<div class="theme" role="group" aria-label="Colour theme"><span>Theme</span>' + THEMES.map(x => '<button class="ghost" data-act="theme" data-v="' + x[0] + '" aria-pressed="' + (THEME === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>';
 }
 const canPlay = () => !!(form.report && form.report.pz && form.report.pz.solutions > 0);
 function playWord() { const s = canPlay() && load(form.report.pz.gid); return s && !s.won ? 'Resume' : 'Play'; }
@@ -901,6 +920,7 @@ app.addEventListener('click', async e => {
   else if (a === 'check') { form.show = false; checkForm(); setReport(); }
   else if (a === 'count') { if (await ask('Show how many solutions this puzzle has? You can also play without knowing.', 'Show count')) { form.show = true; render(); } }
   else if (a === 'play') { const pz = form.report && form.report.pz; if (pz && pz.solutions > 0) { const rv = form.rival && form.rival.gid === pz.gid ? form.rival : null; startGame(pz, form.show, false, form.gotd && form.gotd.gid === pz.gid ? form.gotd.date : null); if (rv) { S.rival = rv; save(); render(); } } }
+  else if (a === 'theme') { THEME = b.dataset.v; try { localStorage.setItem(KEY + ':theme', THEME); } catch (e) {} applyTheme(); render(); }
   else if (a === 'fold') { form[b.dataset.f] = !form[b.dataset.f]; render(); }
   else if (a === 'gotd-play' || a === 'rand-play') {
     const el = document.getElementById('gdate'), date = el && /^\d{4}-\d\d-\d\d$/.test(el.value) ? el.value : todayStr(); form.gdate = date;
