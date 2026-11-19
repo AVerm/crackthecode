@@ -25,8 +25,9 @@
   }
 }
 :root[data-theme="black"]{
-  --paper:#000000; --ink:#f2f2f2; --muted:#8b929c; --faint:#2b2f35; --zone:#121417; --ctl:#23272d;
-  --accent:#8fb0ff; --accent-ink:#000000; --hl:#172648; --true:#57d3ab; --false:#ff8f84; --contra:#3d1814; --gone:#555b63; color-scheme:dark;
+  /* near-black, not #000: every pixel stays slightly lit, which avoids smearing on OLED screens while scrolling */
+  --paper:#0b0b0c; --ink:#ededed; --muted:#8d9299; --faint:#2c2e32; --zone:#161719; --ctl:#26282c;
+  --accent:#8fb0ff; --accent-ink:#0b0b0c; --hl:#192849; --true:#57d3ab; --false:#ff8f84; --contra:#3d1814; --gone:#585c63; color-scheme:dark;
 }
 :root[data-theme="dark"]{
   --paper:#0f1216; --ink:#e9edf2; --muted:#98a1ad; --faint:#39414c; --zone:#181d25; --ctl:#2a323d;
@@ -282,7 +283,7 @@ const getPref = (k, d) => { try { const v = localStorage.getItem(KEY + ':' + k);
 const setPref = (k, v) => { try { localStorage.setItem(KEY + ':' + k, v ? '1' : '0'); } catch (e) {} };
 let HL = getPref('hl', false), WORK = getPref('work', false);
 // Theme: 'auto' follows the device; the rest force a palette from the stylesheet.
-const THEMES = [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']];
+const THEMES = [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark'], ['black', 'Black']];
 let THEME = (() => { try { return localStorage.getItem(KEY + ':theme') || 'auto'; } catch (e) { return 'auto'; } })();
 function applyTheme() {
   if (!THEMES.some(x => x[0] === THEME)) THEME = 'auto';
