@@ -157,6 +157,10 @@ const gameId = s => s.id || (s.id = s.gid + '@' + s.startedAt);
 function readGame(id) { try { const s = JSON.parse(LS.get('g:' + id) || 'null'); if (s && s.v === 3 && s.def && gameId(s) === id) return s; } catch (e) {} return null; }
 function recentIds() { migrateSaves(); try { const a = JSON.parse(LS.get('recent') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
 function recentGames() { return recentIds().map(readGame).filter(Boolean); }
+// first-time help: one-time tips, the first-visit block on the setup screen, and a small first puzzle
+function tipOnce(name, msg) { if (LS.get('tip-' + name)) return ''; LS.set('tip-' + name, '1'); return msg; }
+const newcomer = () => !recentGames().some(g => g.rows && g.rows.length);
+const FIRST_PUZZLE = (BANKMETA.find(g => g.n === 4 && g.single && !g.overlap && g.solutions === 1) || BANKMETA[0]).code;
 function findGame(gid) { return recentGames().find(s => s.gid === gid) || null; }
 function save() {
   const id = gameId(S), was = LS.get('last'); let ids = recentIds().filter(x => x !== id);
@@ -497,7 +501,12 @@ function bankHtml() {
 function modesWord() { const on = MODES.filter(m => MODE[m[0]]).length; return 'Game modes (' + (on === 3 ? 'all three on' : on + ' of 3 on') + ')'; }
 function renderSetup() {
   let h = '<header class="top"><h1>' + TITLE + '</h1><div class="tools">' + (S && P ? '<button class="ghost" data-act="back">Back to game</button>' : '') + '</div></header>';
-  h += '<section class="setup"><div><button class="ghost big" data-act="tutorial">How to play</button></div>';
+  if (newcomer()) {
+    const seen = !!LS.get('tut-seen');
+    h += '<section class="setup"><div class="lbl">New here?</div><p class="newbie">How to play takes about three minutes. Then try a small first puzzle with four cards.</p>';
+    h += '<div class="start"><button class="' + (seen ? 'ghost' : 'primary') + ' big" data-act="tutorial" data-fk="tut">How to play</button></div>';
+    h += '<div class="lbl">First puzzle</div><div class="start"><span class="firstp">Four cards, one solution</span><button class="primary" data-act="first-play" data-fk="firstp">Play</button></div>';
+  } else h += '<section class="setup"><div><button class="ghost big" data-act="tutorial" data-fk="tut">How to play</button></div>';
   // every way to start is one row: its name, its setting, and Play in the same place
   h += '<div class="lbl">Game of the day</div><div class="start"><input type="date" id="gdate" aria-label="Day" value="' + esc(form.gdate || todayStr()) + '"><button class="primary" data-act="gotd-play">Play</button></div>';
   h += '<div class="lbl">Random game</div><div class="start"><button class="foldsel" data-act="fold" data-f="fmodes" aria-expanded="' + !!form.fmodes + '">' + (form.fmodes ? '▾ ' : '▸ ') + modesWord() + '</button><button class="primary" data-act="rand-play">Play</button></div>';
@@ -634,6 +643,7 @@ function ask(html, ok) {
   });
 }
 function showTutorial() {
+  LS.set('tut-seen', '1');
   modal.innerHTML = '<div class="dlg tut" role="dialog" aria-modal="true"><div class="tutbody">' + TUTORIAL + '</div><div class="dlgb"><button class="primary" data-m="0">Got it</button></div></div>';
   modal.hidden = false;
   const key = e => { if (e.key === 'Escape') { document.removeEventListener('keydown', key); closeModal(); } };
@@ -666,7 +676,10 @@ async function doEvaluate() {
   const res = {}; t.forEach(i => { res[i] = predVal(i, code); });
   S.rows.push({ code, res, guess: false, fresh: t });
   S.turns += 1; S.evals += t.length; S.contra = []; S.ticks = []; ui.step = null; announce(name + ': ' + t.map(i => LET[i] + (res[i] ? ' true' : ' false')).join(', '));
-  say(''); save(); render();
+  const anyF = t.some(i => !res[i]), anyT = t.some(i => res[i]);
+  const tip = (anyF ? tipOnce('false', F_ + ' means the secret option is not one ' + cs(code) + ' satisfies: on that card, cross out every option ' + cs(code) + ' does satisfy. ') : '')
+    + (anyT ? tipOnce('true', T + ' means ' + cs(code) + ' satisfies the secret option: on that card, cross out every option it does not satisfy' + (P.singleOption ? '' : ' (when the card has one secret option)') + '.') : '');
+  say(tip ? 'Tip: ' + tip.trim() : ''); save(); render();
 }
 async function doKnow() {
   if (S.won || effTicks().length) return;
@@ -678,14 +691,13 @@ async function doKnow() {
   const win = P.preds.every((p, i) => res[i]), contra = win ? [] : contraCells(code);
   S.rows.push({ code, res, guess: true, fresh: fr }); S.ticks = []; ui.step = null;
   if (win) { S.won = true; S.finishedAt = Date.now(); S.contra = []; say(''); }
-  else { S.wrong += 1; S.evals += fr.length; S.turns += Math.ceil(fr.length / 3); S.contra = contra; say(cs(code) + ' is not the code.' + (contra.length ? ' ' + plural(contra.length, 'earlier cell') + ' already ruled it out.' : ''), true); }
+  else { S.wrong += 1; S.evals += fr.length; S.turns += Math.ceil(fr.length / 3); S.contra = contra; say(cs(code) + ' is not the code.' + (contra.length ? ' ' + plural(contra.length, 'earlier cell') + ' already ruled it out.' : '') + (tipOnce('wrong', ' A wrong guess costs turns as if its new results were evaluations: one turn for every three.') || ''), true); }
   save(); render();
 }
 function toggleMark(key, s) {
   const [ty, a, b] = key.split(':'), arr = ty === 'd' ? S.marks.d[+a] : S.marks.o[+a]; arr[+b] = arr[+b] === s ? 0 : s;
-  let tipped = false; try { tipped = !!localStorage.getItem(KEY + ':tip-hold'); } catch (e) { tipped = true; }
-  if (s === 1 && arr[+b] === 1 && !tipped) { say('Tip: press and hold a mark to circle it instead. On a keyboard, Shift+Enter.'); try { localStorage.setItem(KEY + ':tip-hold', '1'); } catch (e) {} }
-  else if (s === 2 && !tipped) { try { localStorage.setItem(KEY + ':tip-hold', '1'); } catch (e) {} }
+  if (s === 1 && arr[+b] === 1) { const m = tipOnce('hold', 'Tip: press and hold a mark to circle it instead. On a keyboard, Shift+Enter.'); if (m) say(m); }
+  else if (s === 2) LS.set('tip-hold', '1');
   save(); render();
 }
 function step(d, dir) { if (S.won) return; S.dial[d] = ((S.dial[d] - 1 + dir + 5) % 5) + 1; save(); render(); }
@@ -695,7 +707,7 @@ app.addEventListener('click', async e => {
   if (b.dataset.fk) opener = b.dataset.fk;
   const a = b.dataset.act;
   if (a === 'inc' || a === 'dec') step(+b.dataset.d, a === 'inc' ? 1 : -1);
-  else if (a === 'tick') { const i = +b.dataset.i, at = S.ticks.indexOf(i); if (at >= 0) S.ticks.splice(at, 1); else if (effTicks().length >= 3) say('Three predicates at most per turn.', true); else { S.ticks.push(i); if (ui.bad) say(''); } save(); render(); }
+  else if (a === 'tick') { const i = +b.dataset.i, at = S.ticks.indexOf(i); if (at >= 0) S.ticks.splice(at, 1); else if (effTicks().length >= 3) say('Three predicates at most per turn.', true); else { S.ticks.push(i); const m = tipOnce('tick', 'Tip: tick up to three cards to test on the code above. Together they cost one turn; each tick is one evaluation.'); if (m) say(m); else if (ui.bad) say(''); } save(); render(); }
   else if (a === 'eval') doEvaluate();
   else if (a === 'know') doKnow();
   else if (a === 'tutorial') showTutorial();
@@ -723,6 +735,7 @@ app.addEventListener('click', async e => {
   else if (a === 'play') { const pz = form.report && form.report.pz; if (pz && pz.solutions > 0) { const rv = form.rival && form.rival.gid === pz.gid ? form.rival : null; startGame(pz, form.show, false, form.gotd && form.gotd.gid === pz.gid ? form.gotd.date : null); if (rv) { S.rival = rv; save(); render(); } } }
   else if (a === 'theme') { THEME = b.dataset.v; try { localStorage.setItem(KEY + ':theme', THEME); } catch (e) {} applyTheme(); render(); }
   else if (a === 'fold') { form[b.dataset.f] = !form[b.dataset.f]; render(); }
+  else if (a === 'first-play') { if (loadCode(FIRST_PUZZLE)) startGame(form.report.pz, false, false, null); }
   else if (a === 'gotd-play' || a === 'rand-play') {
     const el = document.getElementById('gdate'), date = el && /^\d{4}-\d\d-\d\d$/.test(el.value) ? el.value : todayStr(); form.gdate = date;
     const g = a === 'gotd-play' ? gameOfDay(date) : randomPuzzle([4, 5, 5, 6][Math.floor(Math.random() * 4)], wantFromModes(Math.random), Math.random);
