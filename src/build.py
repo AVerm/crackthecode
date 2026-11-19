@@ -37,11 +37,18 @@ data = "const LIB=" + json.dumps(LIB, ensure_ascii=False, separators=(",", ":"))
 assert "</" not in data
 t = open(HERE / "template.html", encoding="utf-8").read(); css = open(HERE / "style.css", encoding="utf-8").read(); js = open(HERE / "app.js", encoding="utf-8").read()
 t = re.sub(r"<style>.*?</style>", lambda m: "<style>\n" + css + "</style>", t, flags=re.S)
+# BUILD names this release: it changes whenever anything that goes into the page or the worker changes
+import hashlib
+sw = open(HERE / "sw.js", encoding="utf-8").read()
+BUILD = hashlib.sha256((data + css + js + t + sw).encode("utf-8")).hexdigest()[:8]
+data += 'const BUILD = "' + BUILD + '";\n'
 t = re.sub(r"<script>.*?</script>", lambda m: "<script>\n" + data + js + "</script>", t, flags=re.S)
 out = Path(sys.argv[1]) if len(sys.argv) > 1 else WWW / "index.html"
 open(out, "w", encoding="utf-8", newline="\n").write(t)
 # the not-found page Pages shows for any missing address: same styles and theme, links back to the game
 key = re.search(r"const KEY = '([^']+)'", js).group(1)
 nf = open(HERE / "404.html", encoding="utf-8").read().replace("/*CSS*/", css).replace("/*KEY*/", repr(key))
-if len(sys.argv) <= 1: open(WWW / "404.html", "w", encoding="utf-8", newline="\n").write(nf)
-print(len(BANK), "starter +", len(TMBANK), "manual puzzles;", len(t), "bytes; data", len(data), "; css", len(css), "; js", len(js), "; list strings", sum(len(b) for b in BANK + TMBANK), "chars")
+if len(sys.argv) <= 1:
+    open(WWW / "404.html", "w", encoding="utf-8", newline="\n").write(nf)
+    open(WWW / "sw.js", "w", encoding="utf-8", newline="\n").write(sw.replace("/*BUILD*/", BUILD))
+print("build", BUILD, ";", len(BANK), "starter +", len(TMBANK), "manual puzzles;", len(t), "bytes; data", len(data), "; css", len(css), "; js", len(js), "; list strings", sum(len(b) for b in BANK + TMBANK), "chars")

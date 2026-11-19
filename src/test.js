@@ -3,6 +3,8 @@ const el = () => ({ addEventListener() {}, innerHTML: '', hidden: true, querySel
 global.document = { getElementById: el, addEventListener() {}, removeEventListener() {}, activeElement: null, documentElement: { dataset: {} }, querySelector: () => null };
 global.getComputedStyle = () => ({ getPropertyValue: () => '' });
 global.window = { addEventListener() {} };
+global.location = { hostname: 'test.invalid', origin: 'https://test.invalid', reload() {} };
+global.navigator = { userAgent: 'node', platform: 'node', maxTouchPoints: 0 };
 global.__store = {}; const store = global.__store; global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; }, key: i => Object.keys(store)[i] ?? null, get length() { return Object.keys(store).length; } };
 // Engine tests for the built page: node src/test.js [path to index.html]
 const page = fs.readFileSync(process.argv[2] || require('path').join(__dirname, '..', 'www', 'index.html'), 'utf8');
@@ -140,6 +142,14 @@ const src = page.slice(page.indexOf('<script>') + 8, page.lastIndexOf('</script>
     const ok = ids1.length === 5 && kept === 5 && idleGone && notListed && replay && resumed && ls && ls.gid === codes[2].gid && mig.length === 5 && mig[0].indexOf(codes[2].gid) === 0 && oldGone && __store['ctc-v3:hl'] === '1';
     if (!ok) fail('recent games ' + JSON.stringify({ ids1: ids1.length, kept, idleGone, notListed, replay, resumed, ls: ls && ls.gid, mig: mig.length, first: mig[0], oldGone }));
     console.log('recent games: kept', kept, '| untouched game dropped', idleGone, '| replay kept separately', replay, '| resume', resumed, '| migrated', mig.length, 'of 6 played, old keys removed', oldGone);
+  }
+  // 8. moving saved games between copies of the site (Safari to the home screen on iPhone)
+  { const snap = JSON.stringify(Object.keys(__store).sort().map(k => [k, __store[k]]));
+    for (let gno = 0; gno < 7; gno++) { loadCode(BANK[gno]); startGame(form.report.pz, false, true); S.rows.push({ code: [1, 2, 3], res: { 0: predVal(0, [1, 2, 3]) }, guess: false, fresh: [0] }); S.turns = 1; S.evals = 1; S.startedAt += gno; save(); }
+    const ids = recentIds(), text = savesText(); Object.keys(__store).forEach(k => delete __store[k]);
+    const n1 = loadSaves(text), same = JSON.stringify(recentIds()) === JSON.stringify(ids), n2 = loadSaves(text), bad = loadSaves(TITLE + ' saved games' + String.fromCharCode(10) + 'not base64!'), none = loadSaves('hello');
+    if (n1 !== ids.length || !same || n2 !== 0 || bad !== -1 || none !== -1) fail('saved games move ' + [n1, ids.length, same, n2, bad, none]);
+    console.log('saved games moved', n1, 'of', ids.length, '| order kept', same, '| second paste adds', n2, '| text', text.length, 'chars');
   }
   view = 'setup'; renderSetup(); showTutorial;
 })();`;

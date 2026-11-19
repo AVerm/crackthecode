@@ -381,6 +381,8 @@ function showImport() {
   modal.onclick = async e => {
     const b = e.target.closest('[data-m]'); if (!b) { if (e.target === modal) closeModal(); return; }
     if (b.dataset.m !== '1') { closeModal(); return; }
+    const moved = loadSaves(area.value);
+    if (moved >= 0) { closeModal(); view = 'setup'; render(); announce('Moved ' + plural(moved, 'saved game') + '.'); const g = document.querySelector('.recent, [data-act="resume"]'); if (g) g.scrollIntoView({ block: 'center' }); return; }
     const r = importTable(area.value); if (r.error) { note.textContent = r.error; return; }
     closeModal(); P = r.pz; S = r.state; noteAids(); ui.msg = ''; ui.bad = false; ui.pending = false; ui.step = null; ui.hint = false; view = 'play'; save(); render();
   };
@@ -501,9 +503,10 @@ function bankHtml() {
 function modesWord() { const on = MODES.filter(m => MODE[m[0]]).length; return 'Game modes (' + (on === 3 ? 'all three on' : on + ' of 3 on') + ')'; }
 function renderSetup() {
   let h = '<header class="top"><h1>' + TITLE + '</h1><div class="tools">' + (S && P ? '<button class="ghost" data-act="back">Back to game</button>' : '') + '</div></header>';
+  if (askInstall()) h += '<div class="install"><span>Add ' + TITLE + ' to your home screen? It opens like an app and works offline.</span><button class="primary" data-act="inst-yes" data-fk="instyes">Yes</button><button class="ghost" data-act="inst-no" data-fk="instno">No</button></div>';
   if (newcomer()) {
     const seen = !!LS.get('tut-seen');
-    h += '<section class="setup"><div class="lbl">New here?</div><p class="newbie">How to play takes about three minutes. Then try a small first puzzle with four cards.</p>';
+    h += '<section class="setup"><div class="lbl">New here?</div><p class="newbie">How to play takes about three minutes. Then try a small first puzzle with four cards.' + (STANDALONE && IOS ? ' Moved from Safari? Bring your games with \u201cPaste a table or your saved games\u201d below.' : '') + '</p>';
     h += '<div class="start"><button class="' + (seen ? 'ghost' : 'primary') + ' big" data-act="tutorial" data-fk="tut">How to play</button></div>';
     h += '<div class="lbl">First puzzle</div><div class="start"><span class="firstp">Four cards, one solution</span><button class="primary" data-act="first-play" data-fk="firstp">Play</button></div>';
   } else h += '<section class="setup"><div><button class="ghost big" data-act="tutorial" data-fk="tut">How to play</button></div>';
@@ -522,7 +525,7 @@ function renderSetup() {
     const what = s.won ? 'won in ' + plural(s.turns, 'turn') : 'turn ' + (s.turns + 1) + ', in progress';
     return '<div class="start recent"><div class="recinfo"><span class="code">' + esc(s.gid) + '</span><span>' + esc((s.gotd ? 'Game of the day ' + s.gotd : day) + ' \u00b7 ' + what) + '</span></div><button class="' + (s.won ? 'ghost' : 'primary') + '" data-act="recent" data-id="' + esc(gameId(s)) + '">' + (s.won ? 'Review' : 'Resume') + '</button></div>';
   }).join('');
-  h += '<div class="lbl">Exported table</div><div class="start"><button class="foldsel" data-act="import" data-fk="import">Paste a table to continue or review it</button></div>';
+  h += '<div class="lbl">Exported table</div><div class="start"><button class="foldsel" data-act="import" data-fk="import">' + (STANDALONE ? 'Paste a table or your saved games' : 'Paste a table to continue or review it') + '</button></div>';
   h += '<div class="lbl">Build a puzzle</div><div class="start"><button class="foldsel" data-act="fold" data-f="fbuild" aria-expanded="' + !!form.fbuild + '">' + (form.fbuild ? '\u25be ' : '\u25b8 ') + 'Predicates and checkers</button></div>';
   if (form.fbuild) {
     h += '<div id="rows">' + rowsHtml() + '</div>';
@@ -644,11 +647,14 @@ function ask(html, ok) {
 }
 function showTutorial() {
   LS.set('tut-seen', '1');
-  modal.innerHTML = '<div class="dlg tut" role="dialog" aria-modal="true"><div class="tutbody">' + TUTORIAL + '</div><div class="dlgb"><button class="primary" data-m="0">Got it</button></div></div>';
+  modal.innerHTML = '<div class="dlg tut" role="dialog" aria-modal="true"><div class="tutbody">' + TUTORIAL + (SITE ? '<p class="fine"><button class="quiet" data-m="upd">Manually check for updates</button></p>' : '') + '</div><div class="dlgb"><button class="primary" data-m="0">Got it</button></div></div>';
   modal.hidden = false;
   const key = e => { if (e.key === 'Escape') { document.removeEventListener('keydown', key); closeModal(); } };
   document.addEventListener('keydown', key);
-  modal.onclick = e => { if (e.target.closest('[data-m]') || e.target === modal) { document.removeEventListener('keydown', key); closeModal(); } };
+  modal.onclick = e => {
+    const b = e.target.closest('[data-m]'); if (b && b.dataset.m === 'upd') { const p = b.parentNode; p.textContent = ''; checkUpdate(p); return; }
+    if (b || e.target === modal) { document.removeEventListener('keydown', key); closeModal(); }
+  };
   modal.querySelector('.primary').focus();
 }
 function showText(title, text) {
@@ -735,6 +741,8 @@ app.addEventListener('click', async e => {
   else if (a === 'play') { const pz = form.report && form.report.pz; if (pz && pz.solutions > 0) { const rv = form.rival && form.rival.gid === pz.gid ? form.rival : null; startGame(pz, form.show, false, form.gotd && form.gotd.gid === pz.gid ? form.gotd.date : null); if (rv) { S.rival = rv; save(); render(); } } }
   else if (a === 'theme') { THEME = b.dataset.v; try { localStorage.setItem(KEY + ':theme', THEME); } catch (e) {} applyTheme(); render(); }
   else if (a === 'fold') { form[b.dataset.f] = !form[b.dataset.f]; render(); }
+  else if (a === 'inst-no') { LS.set('install-no', '1'); render(); }
+  else if (a === 'inst-yes') { LS.set('install-yes', '1'); showInstall(); }
   else if (a === 'first-play') { if (loadCode(FIRST_PUZZLE)) startGame(form.report.pz, false, false, null); }
   else if (a === 'gotd-play' || a === 'rand-play') {
     const el = document.getElementById('gdate'), date = el && /^\d{4}-\d\d-\d\d$/.test(el.value) ? el.value : todayStr(); form.gdate = date;
@@ -810,6 +818,72 @@ app.addEventListener('contextmenu', e => {
   if (press) { if (!press.done) { clearTimeout(press.timer); press.done = true; toggleMark(mk.dataset.mark, 2); } }
   else toggleMark(mk.dataset.mark, 2);
 });
+
+// ---------- home screen: offline copy, install prompt, moving saved games ----------
+// Only on the real site: the artifact preview neither installs nor works offline.
+const SITE = /(^|\.)crackthe\.xyz$|\.github\.io$|^localhost$|^127\.0\.0\.1$/.test(location.hostname);
+const STANDALONE = (() => { try { return (!!window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; } catch (e) { return false; } })();
+const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1), ANDROID = /Android/.test(navigator.userAgent);
+const INSTALL_AFTER = 10;   // loads in the browser before the game offers the home screen
+let installEvent = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvent = e; });
+window.addEventListener('appinstalled', () => { LS.set('install-done', '1'); installEvent = null; if (view === 'setup') render(); });
+if (SITE && !STANDALONE) LS.set('loads', String((+LS.get('loads') || 0) + 1));   // quiet when already running from the home screen
+if (SITE && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+const askInstall = () => SITE && (IOS || ANDROID) && !STANDALONE && (+LS.get('loads') || 0) >= INSTALL_AFTER && !LS.get('install-no') && !LS.get('install-yes') && !LS.get('install-done');
+const MOVE_HEAD = TITLE + ' saved games';
+function savesText() {   // every saved game and setting, as one block of text to paste into the home-screen copy
+  const items = {};
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith(KEY + ':') && !/:(loads|install-)/.test(k)) items[k.slice(KEY.length + 1)] = localStorage.getItem(k); } } catch (e) {}
+  return MOVE_HEAD + '\n' + btoa(unescape(encodeURIComponent(JSON.stringify({ v: 1, items })))).replace(/(.{64})/g, '$1\n').trim();
+}
+function loadSaves(text) {   // returns how many games were added, or -1 if the text is not a saved-games block
+  const at = text.indexOf(MOVE_HEAD); if (at < 0) return -1;
+  let d; try { d = JSON.parse(decodeURIComponent(escape(atob(text.slice(at + MOVE_HEAD.length).replace(/\s+/g, ''))))); } catch (e) { return -1; }
+  if (!d || d.v !== 1 || !d.items) return -1;
+  const before = new Set(recentIds());
+  Object.keys(d.items).forEach(k => { if (k !== 'recent' && k !== 'last' && LS.get(k) === null) LS.set(k, d.items[k]); });
+  let ids = []; try { ids = JSON.parse(d.items.recent || '[]'); } catch (e) {}
+  const all = Array.from(new Set(recentIds().concat(ids))).map(readGame).filter(Boolean).sort((a, b) => b.startedAt - a.startedAt);
+  all.slice(RECENT_MAX).forEach(s => LS.del('g:' + gameId(s)));
+  const keep = all.slice(0, RECENT_MAX).map(gameId); LS.set('recent', JSON.stringify(keep));
+  if (!LS.get('last') && d.items.last && readGame(d.items.last)) LS.set('last', d.items.last);
+  return keep.filter(id => !before.has(id)).length;
+}
+function showInstall() {
+  const games = recentGames().length;
+  let body = '<h2>Add it to your home screen</h2>';
+  if (IOS) {
+    body += '<ol><li>In Safari, tap <b>Share</b> (the square with an arrow). On recent iPhones it may be inside the <b>\u2022\u2022\u2022</b> menu.</li><li>Choose <b>Add to Home Screen</b>. You may need to scroll down, or tap <b>More</b>.</li><li>Tap <b>Add</b>.</li></ol>'
+      + '<p>The home-screen copy opens like an app, works offline, and its saved games are safe from Safari\u2019s seven-day clean-up.</p>'
+      + '<p>It starts without your saved games: iPhone keeps them apart from Safari.' + (games ? ' To bring yours along, tap <b>Copy my games</b> now. In the new copy, tap <b>Paste a table or your saved games</b> and paste.' : '') + '</p>';
+  } else {
+    body += installEvent ? '<p>Tap <b>Install</b> below, then confirm.</p>' : '<ol><li>Open your browser\u2019s menu (<b>\u22ee</b>).</li><li>Choose <b>Install app</b> or <b>Add to Home screen</b>.</li><li>Confirm.</li></ol>';
+    body += '<p>It opens like an app and works offline. In Chrome, your saved games come along.</p>';
+  }
+  modal.innerHTML = '<div class="dlg tut" role="dialog" aria-modal="true"><div class="tutbody">' + body + '</div><small id="txtnote"></small><div class="dlgb">'
+    + (IOS && games ? '<button class="ghost" data-m="copy">Copy my games</button>' : '') + (!IOS && installEvent ? '<button class="ghost" data-m="0">Not now</button><button class="primary" data-m="inst">Install</button>' : '<button class="primary" data-m="0">Done</button>') + '</div></div>';
+  modal.hidden = false;
+  modal.onclick = async e => {
+    const b = e.target.closest('[data-m]'); if (!b) { if (e.target === modal) { closeModal(); render(); } return; }
+    if (b.dataset.m === 'copy') { copy(savesText(), modal.querySelector('#txtnote')); return; }
+    if (b.dataset.m === 'inst' && installEvent) { const ev = installEvent; installEvent = null; try { await ev.prompt(); } catch (err) {} }
+    closeModal(); render();
+  };
+  modal.querySelector('.primary, .ghost').focus();
+}
+async function checkUpdate(el) {   // reached only from the very end of How to play
+  el.textContent = 'Checking\u2026';
+  try {
+    const r = await fetch('./?check=' + Date.now(), { cache: 'no-store' }), m = (await r.text()).match(/const BUILD = "([0-9a-f]{8})"/);
+    if (!r.ok || !m) throw new Error('no build');
+    if (m[1] === BUILD) { el.textContent = 'You have the latest version (' + BUILD + ').'; return; }
+    el.textContent = 'Updating\u2026';
+    if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
+    if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
+    location.reload();
+  } catch (e) { el.textContent = 'Could not reach the site. Try again when you are online.'; }
+}
 
 function start(data) {
   const given = data && data.S && data.S.v === 3 ? data.S : null, last = given || lastState();

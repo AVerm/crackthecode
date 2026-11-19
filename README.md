@@ -8,6 +8,8 @@ GitHub Pages publishes only the `www/` folder, through the workflow in `.github/
 
 - `index.html`: the whole game in one self-contained file, with no network requests.
 - `404.html`: the page Pages shows for any address that does not exist, in the game's styles and theme.
+- `manifest.webmanifest` and `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`: what phones use to install the game on the home screen.
+- `sw.js`: the service worker that keeps an offline copy. It fetches from the network first, so online players always get the newest version; offline, or when the network takes over four seconds, it serves the last copy seen. Each build stamps a new version into it, which replaces the old copy.
 - The icons: `favicon.svg` and `favicon.ico` for browser tabs and `apple-touch-icon.png` for phone home screens, each with a `-dark` twin the page switches to on a dark theme.
 
 The custom domain, crackthe.xyz, is set in the Pages settings.
@@ -24,12 +26,13 @@ Saved games and settings live in each player's browser, per site address.
 | `style.css` | All styles, including the themes |
 | `template.html` | The page shell the script and styles are poured into |
 | `404.html` | The not-found page's shell; the build pours the same styles into it |
+| `sw.js` | The service worker; the build stamps the release's version into it |
 | `library.json` | The 95 predicates and their checker cards |
 | `tm_compat.json` | Turing Machine criteria and verification numbers mapped onto the library |
 | `generate_puzzles.py` | Puzzle generator; the build uses it for the starter list, and it also runs on its own (`--help`) |
-| `build.py` | Builds `www/index.html` and `www/404.html` |
+| `build.py` | Builds `www/index.html`, `www/404.html` and `www/sw.js` |
 | `test.js` | Engine tests run against the built page |
-| `icons/` | Sources for the home-screen icons |
+| `icons/` | Sources for the home-screen icons, including the maskable one (the same art at 80%, so round masks never cut it) |
 
 To rebuild and test (Python 3 and Node):
 

@@ -290,3 +290,11 @@ pre.out{margin:0;font-family:var(--math);font-size:15px;white-space:pre-wrap;ove
 .newbie{margin:-4px 0 0;font-size:15px}
 .start>.big{height:44px;padding:0 18px;justify-self:start}
 .firstp{align-self:center;color:var(--muted);font-size:14px}
+/* install offer: one quiet line with Yes and No */
+.install{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;font-size:14px;background:var(--zone);border-radius:8px;padding:8px 10px;margin:4px 0 2px}
+.install span{flex:1 1 200px}
+.install .primary{padding:0 16px}
+.tutbody ol{padding-left:20px;margin:6px 0}
+.tutbody li{margin:4px 0}
+.fine{margin-top:28px;font-size:12px}
+.quiet{background:none;border:none;padding:0;color:var(--muted);font:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
