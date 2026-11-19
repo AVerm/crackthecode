@@ -32,6 +32,7 @@ Saved games and settings live in each player's browser, per site address.
 | `generate_puzzles.py` | Puzzle generator; the build uses it for the starter list, and it also runs on its own (`--help`) |
 | `build.py` | Builds `www/index.html`, `www/404.html` and `www/sw.js` |
 | `test.js` | Engine tests run against the built page |
+| `artifact/index.html` | The page the original Claude artifact now shows: it points to crackthe.xyz and to `www/index.html` here, and offers to copy any games saved in the artifact. It is published by hand and is not part of the site |
 | `icons/` | Sources for the home-screen icons, including the maskable one (the same art at 80%, so round masks never cut it) |
 
 To rebuild and test (Python 3 and Node):

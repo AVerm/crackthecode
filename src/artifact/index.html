@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crack the Code! has moved</title>
+<link rel="icon" id="ico-svg" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" id="ico-ico" href="favicon.ico" sizes="16x16 32x32">
+<link rel="apple-touch-icon" id="ico-apple" href="apple-touch-icon.png">
+<style>
+/* The Claude artifact that first hosted the game. It now only points to the live site and the file on GitHub,
+   and offers to carry over any games saved here. Same look as the game: system fonts, one blue, one tint. */
+:root{--paper:#fff;--ink:#111418;--muted:#646c78;--zone:#f1f4f9;--ctl:#e6eaf0;--accent:#1f4fd8;--accent-ink:#fff;
+  --math:"STIX Two Text","Cambria Math",Cambria,"Times New Roman",Times,serif;--ui:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--paper:#0f1216;--ink:#e9edf2;--muted:#98a1ad;--zone:#181d25;--ctl:#2a323d;--accent:#7ea2ff;--accent-ink:#0b1020}}
+:root[data-theme=dark]{--paper:#0f1216;--ink:#e9edf2;--muted:#98a1ad;--zone:#181d25;--ctl:#2a323d;--accent:#7ea2ff;--accent-ink:#0b1020}
+:root[data-theme=black]{--paper:#000;--ink:#e9edf2;--muted:#98a1ad;--zone:#111418;--ctl:#23292f;--accent:#7ea2ff;--accent-ink:#000}
+html{background:var(--paper);color:var(--ink);color-scheme:light dark}
+body{margin:0;font-family:var(--ui);font-size:16px;line-height:1.45}
+main{max-width:34rem;margin:0 auto;padding:22px 16px 48px;display:flex;flex-direction:column;gap:12px}
+h1{font-family:var(--math);font-style:italic;font-weight:600;font-size:28px;margin:0 0 6px}
+p{margin:0}
+.lbl{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border-radius:6px;font:600 16px var(--ui);text-decoration:none;border:none;cursor:pointer}
+.primary{background:var(--accent);color:var(--accent-ink)}
+.ghost{background:var(--ctl);color:var(--ink)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.small{font-size:13.5px;color:var(--muted)}
+.saves{background:var(--zone);border-radius:10px;padding:10px 12px 12px;display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.saves .lbl{margin:0}
+#note:empty{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>Crack the Code!</h1>
+<div class="lbl">The game has moved</div>
+<p>Crack the Code! now lives at <b>crackthe.xyz</b>. Play it there: it installs on your phone’s home screen, works offline, and gets every update first.</p>
+<p><a class="btn primary" href="https://crackthe.xyz/" target="_blank" rel="noopener">Play at crackthe.xyz</a></p>
+<div class="lbl">Or keep your own copy</div>
+<p>The whole game is one file that needs no internet. Download <b>index.html</b> from GitHub (the download button is at the top right of the file) and open it in a browser on a computer.</p>
+<p><a class="btn ghost" href="https://github.com/Averm/crackthecode/blob/master/www/index.html" target="_blank" rel="noopener">index.html on GitHub</a></p>
+<section class="saves" id="saves" hidden>
+  <div class="lbl">Your saved games</div>
+  <p id="savestxt"></p>
+  <p><button class="btn ghost" id="copy" type="button">Copy my games</button></p>
+  <textarea id="savesbox" readonly hidden rows="5" style="width:100%;box-sizing:border-box;font:12px ui-monospace,monospace;background:var(--paper);color:var(--ink);border:1px solid var(--ctl);border-radius:6px;padding:6px"></textarea>
+  <p class="small" id="note" role="status"></p>
+</section>
+</main>
+<script>
+(function () {
+  var KEY = 'ctc-v3', HEAD = 'Crack the Code! saved games';
+  function get(k) { try { return localStorage.getItem(KEY + ':' + k); } catch (e) { return null; } }
+  // same theme and icons as the game played here
+  var theme = get('theme') || 'auto', r = document.documentElement;
+  if (theme === 'light' || theme === 'dark' || theme === 'black') r.setAttribute('data-theme', theme);
+  var dark = theme === 'dark' || theme === 'black' || (theme === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  if (dark) [['ico-svg', 'favicon-dark.svg'], ['ico-ico', 'favicon-dark.ico'], ['ico-apple', 'apple-touch-icon-dark.png']].forEach(function (x) { document.getElementById(x[0]).setAttribute('href', x[1]); });
+  // games saved while the game lived here: offer them in the format crackthe.xyz pastes in
+  var ids = []; try { ids = JSON.parse(get('recent') || '[]'); } catch (e) {}
+  if (!Array.isArray(ids) || !ids.length) return;
+  var items = {};
+  try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf(KEY + ':') === 0 && !/:(loads|install-)/.test(k)) items[k.slice(KEY.length + 1)] = localStorage.getItem(k); } } catch (e) {}
+  var text = HEAD + '\n' + btoa(unescape(encodeURIComponent(JSON.stringify({ v: 1, items: items })))).replace(/(.{64})/g, '$1\n').trim();
+  document.getElementById('savestxt').textContent = 'You have ' + ids.length + ' saved game' + (ids.length === 1 ? '' : 's') + ' here, and they do not move by themselves. Tap Copy my games, then at crackthe.xyz tap “Paste a table to continue or review it” and paste.';
+  document.getElementById('saves').hidden = false;
+  var note = document.getElementById('note');
+  document.getElementById('copy').addEventListener('click', function () {
+    var fail = function () {   // show the text so it can be copied by hand
+      var ta = document.getElementById('savesbox'); ta.value = text; ta.hidden = false; ta.focus(); ta.select();
+      note.textContent = 'Copying is blocked here. The text above is selected: copy it by hand.';
+    };
+    try { navigator.clipboard.writeText(text).then(function () { note.textContent = 'Copied. Now paste it at crackthe.xyz.'; }, fail); } catch (e) { fail(); }
+  });
+})();
+</script>
+</body>
+</html>
