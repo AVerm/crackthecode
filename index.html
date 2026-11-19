@@ -254,6 +254,12 @@ pre.out{margin:0;font-family:var(--math);font-size:15px;white-space:pre-wrap;ove
 .theme{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px}
 .theme>span{font-size:14px;margin-right:4px}
 .theme button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.start.recent{margin-top:0}
+.recent+.recent{margin-top:6px}
+.recinfo{background:var(--zone);border-radius:6px;padding:4px 10px;min-width:0;display:flex;flex-direction:column;justify-content:center;font-size:13px;color:var(--muted);line-height:1.25}
+.recinfo .code{font-family:var(--math);font-size:15px;color:var(--ink);letter-spacing:.03em}
+.start.recent>button{height:auto;min-height:38px}
+.start.recent>.ghost{border-radius:5px;font-size:15px;font-weight:600}
 </style>
 </head>
 <body>
@@ -413,23 +419,52 @@ function gameOfDay(date) {
 }
 
 // ---------- storage ----------
-function save() { try { localStorage.setItem(KEY + ':' + S.gid, JSON.stringify(S)); localStorage.setItem(KEY + ':last', S.gid); } catch (e) {} }
-function load(gid) { try { const s = JSON.parse(localStorage.getItem(KEY + ':' + gid) || 'null'); if (s && s.v === 3 && s.gid === gid && s.def) return s; } catch (e) {} return null; }
+// Games are kept by play-through, newest first, and only the last RECENT_MAX are kept: older ones are deleted.
+// A game is listed once it has an evaluation; a game with none is kept only while it is the current game.
+const RECENT_MAX = 5, LS = {
+  get(k) { try { return localStorage.getItem(KEY + ':' + k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(KEY + ':' + k, v); return true; } catch (e) { return false; } },
+  del(k) { try { localStorage.removeItem(KEY + ':' + k); } catch (e) {} } };
+const gameId = s => s.id || (s.id = s.gid + '@' + s.startedAt);
+function readGame(id) { try { const s = JSON.parse(LS.get('g:' + id) || 'null'); if (s && s.v === 3 && s.def && gameId(s) === id) return s; } catch (e) {} return null; }
+function recentIds() { migrateSaves(); try { const a = JSON.parse(LS.get('recent') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function recentGames() { return recentIds().map(readGame).filter(Boolean); }
+function findGame(gid) { return recentGames().find(s => s.gid === gid) || null; }
+function save() {
+  const id = gameId(S), was = LS.get('last'); let ids = recentIds().filter(x => x !== id);
+  if (S.rows.length) { ids.unshift(id); ids.slice(RECENT_MAX).forEach(x => LS.del('g:' + x)); ids = ids.slice(0, RECENT_MAX); LS.set('recent', JSON.stringify(ids)); }
+  if (was && was !== id && !ids.includes(was)) LS.del('g:' + was);   // an untouched game you walked away from
+  LS.set('g:' + id, JSON.stringify(S)); LS.set('last', id);
+}
+// Before this list existed, every game was kept under its game code. Keep the newest five of those and delete the rest.
+function migrateSaves() {
+  if (LS.get('recent') !== null) return;
+  const old = [], keys = []; try { for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i)); } catch (e) {}
+  keys.forEach(k => { if (!k || k.indexOf(KEY + ':') !== 0) return; const rest = k.slice(KEY.length + 1); if (!decodeGame(rest)) return;
+    try { const s = JSON.parse(localStorage.getItem(k)); if (s && s.v === 3 && s.def && s.gid === rest) old.push(s); } catch (e) {} LS.del(rest); });
+  const lastGid = LS.get('last'), when = s => (s.gid === lastGid ? 1e15 : 0) + (s.finishedAt || s.startedAt || 0);
+  old.sort((a, b) => when(b) - when(a));
+  const keep = old.filter(s => s.rows && s.rows.length).slice(0, RECENT_MAX);
+  keep.forEach(s => LS.set('g:' + gameId(s), JSON.stringify(s)));
+  LS.set('recent', JSON.stringify(keep.map(gameId)));
+  const cur = old.find(s => s.gid === lastGid); if (cur) { if (!keep.includes(cur)) LS.set('g:' + gameId(cur), JSON.stringify(cur)); LS.set('last', gameId(cur)); } else LS.del('last');
+}
 function lastState() {
   try {
-    const g = localStorage.getItem(KEY + ':last'); if (g) return load(g);
+    migrateSaves(); const g = LS.get('last'); if (g) return readGame(g);
     const og = localStorage.getItem(OLDKEY + ':last'), o = og ? JSON.parse(localStorage.getItem(OLDKEY + ':' + og) || 'null') : null;   // carry over a game saved before game codes existed
     if (o && o.def && o.def.c) { const m = o.def.p.map((pid, i) => 1 << PRED[pid].o.findIndex(x => x[1] === o.def.c[i])), pz = buildPuzzle(o.def.p, m); o.v = 3; o.gid = pz.gid; o.def = pz.def; return o; }
   } catch (e) {}
   return null;
 }
 function fresh(pz, showCount, gotd) {
-  return { v: 3, gid: pz.gid, def: pz.def, gotd: gotd || null, aids: { w: false, h: false }, showCount: !!showCount, startedAt: Date.now(), finishedAt: null, dial: [1, 1, 1], ticks: [], rows: [],
+  const at = Date.now();
+  return { v: 3, id: pz.gid + '@' + at, gid: pz.gid, def: pz.def, gotd: gotd || null, aids: { w: false, h: false }, showCount: !!showCount, startedAt: at, finishedAt: null, dial: [1, 1, 1], ticks: [], rows: [],
     marks: { d: [0, 1, 2].map(() => [0, 0, 0, 0, 0]), o: pz.preds.map(q => q.options.map(() => 0)) }, turns: 0, evals: 0, wrong: 0, contra: [], won: false };
 }
 function noteAids() { if (!S.aids) S.aids = { w: false, h: false }; if (WORK) S.aids.w = true; if (HL) S.aids.h = true; }
 function startGame(pz, showCount, forceNew, gotd) {
-  P = pz; const old = forceNew ? null : load(pz.gid);
+  P = pz; const old = forceNew ? null : findGame(pz.gid);
   S = old && !old.won ? old : fresh(pz, showCount, gotd);
   if (showCount) S.showCount = true; noteAids();
   ui.msg = ''; ui.bad = false; ui.pending = false; ui.step = null; ui.hint = false; view = 'play'; save(); render();
@@ -615,8 +650,6 @@ function showImport() {
     const b = e.target.closest('[data-m]'); if (!b) { if (e.target === modal) closeModal(); return; }
     if (b.dataset.m !== '1') { closeModal(); return; }
     const r = importTable(area.value); if (r.error) { note.textContent = r.error; return; }
-    const old = load(r.pz.gid), text = area.value;
-    if (old && old.rows.length && !old.won && !old.imported && !(await ask('You have a game in progress on this puzzle. Replace it with the imported table?', 'Replace'))) { showImport(); modal.querySelector('textarea').value = text; return; }
     closeModal(); P = r.pz; S = r.state; noteAids(); ui.msg = ''; ui.bad = false; ui.pending = false; ui.step = null; ui.hint = false; view = 'play'; save(); render();
   };
   area.focus();
@@ -692,7 +725,7 @@ function optsHtml() {
     + '<div class="theme" role="group" aria-label="Colour theme"><span>Theme</span>' + THEMES.map(x => '<button class="ghost" data-act="theme" data-v="' + x[0] + '" aria-pressed="' + (THEME === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>';
 }
 const canPlay = () => !!(form.report && form.report.pz && form.report.pz.solutions > 0);
-function playWord() { const s = canPlay() && load(form.report.pz.gid); return s && !s.won ? 'Resume' : 'Play'; }
+function playWord() { const s = canPlay() && findGame(form.report.pz.gid); return s && !s.won ? 'Resume' : 'Play'; }
 function setReport() {
   const a = document.getElementById('report'), b = document.getElementById('report2'), p = document.getElementById('codeplay');
   if (a) a.innerHTML = reportHtml(false); if (b) b.innerHTML = reportHtml(true); if (p) { p.disabled = !canPlay(); p.textContent = playWord(); }
@@ -700,7 +733,7 @@ function setReport() {
 function reportHtml(play) {
   const rp = form.report; if (!rp) return '';
   if (rp.error) return '<p class="status bad">' + esc(rp.error) + '</p>';
-  const pz = rp.pz, n = pz.solutions, saved = load(pz.gid); let h = (form.gotd && form.gotd.gid === pz.gid ? '<p class="rep"><b>Game of the day for ' + esc(form.gotd.date) + '</b>' + (form.gotd.other ? ', as your friend played it.' : ', for your game modes.') + '</p>' : '') + (form.rival && form.rival.gid === pz.gid ? '<p class="rep"><b>Your friend’s score:</b> ' + rivalWord(form.rival) + '.</p>' : '') + (form.note ? '<p class="rep muted">' + esc(form.note) + '</p>' : '') + '<p class="rep">';
+  const pz = rp.pz, n = pz.solutions; let h = (form.gotd && form.gotd.gid === pz.gid ? '<p class="rep"><b>Game of the day for ' + esc(form.gotd.date) + '</b>' + (form.gotd.other ? ', as your friend played it.' : ', for your game modes.') + '</p>' : '') + (form.rival && form.rival.gid === pz.gid ? '<p class="rep"><b>Your friend’s score:</b> ' + rivalWord(form.rival) + '.</p>' : '') + (form.note ? '<p class="rep muted">' + esc(form.note) + '</p>' : '') + '<p class="rep">';
   h += n === 1 ? 'One solution.' : n === 0 ? 'No solution. No guess could be correct, so this puzzle cannot be played.' : 'More than one solution.' + (form.show ? ' There are ' + n + '.' : '');
   h += '</p><p class="rep">' + (pz.singleOption ? 'One secret option per predicate.' : 'Some predicates have more than one secret option.') + '</p>';
   if (n > 0) h += '<p class="rep">' + (pz.overlap ? 'On at least one predicate, the answer fits more than one of the listed options.' : 'On every predicate, the answer fits exactly one of the listed options.') + '</p>';
@@ -738,6 +771,12 @@ function renderSetup() {
   }
   h += '<div class="lbl">Game code</div><div class="start"><input id="code" aria-label="Game code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="a code, or a friend’s summary" value="' + esc(form.code) + '"><button class="primary" id="codeplay" data-act="play"' + (canPlay() ? '' : ' disabled') + '>' + playWord() + '</button><select id="bank" aria-label="Game list">' + bankHtml() + '</select></div>';
   h += '<span class="res' + (form.codeBad ? ' bad' : '') + '" id="codemsg">' + (form.codeBad ? 'That is not a game code or a summary.' : '') + '</span><div id="report">' + reportHtml(false) + '</div>';
+  const rec = recentGames();
+  if (rec.length) h += '<div class="lbl">Recent games <span class="note">only the last ' + RECENT_MAX + ' are kept</span></div>' + rec.map(s => {
+    const d = new Date(s.startedAt), day = isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const what = s.won ? 'won in ' + plural(s.turns, 'turn') : 'turn ' + (s.turns + 1) + ', in progress';
+    return '<div class="start recent"><div class="recinfo"><span class="code">' + esc(s.gid) + '</span><span>' + esc((s.gotd ? 'Game of the day ' + s.gotd : day) + ' \u00b7 ' + what) + '</span></div><button class="' + (s.won ? 'ghost' : 'primary') + '" data-act="recent" data-id="' + esc(gameId(s)) + '">' + (s.won ? 'Review' : 'Resume') + '</button></div>';
+  }).join('');
   h += '<div class="lbl">Exported table</div><div class="start"><button class="foldsel" data-act="import">Paste a table to continue or review it</button></div>';
   h += '<div class="lbl">Build a puzzle</div><div class="start"><button class="foldsel" data-act="fold" data-f="fbuild" aria-expanded="' + !!form.fbuild + '">' + (form.fbuild ? '\u25be ' : '\u25b8 ') + 'Predicates and checkers</button></div>';
   if (form.fbuild) {
@@ -834,7 +873,7 @@ const TUTORIAL = '<h2>How to play</h2>'
   + '<p><b>Building a puzzle.</b> Under \u201cBuild a puzzle\u201d each line is one card: a predicate number and the checker number of its secret option. \u201cNew predicates\u201d swaps the cards and keeps nothing else; \u201cNew secret options\u201d keeps the cards and picks new secret options. Both follow the game modes. Typing two checker numbers on one line gives that card two secret options.</p>'
   + '<p><b>Hints and the review.</b> Hint shows a worksheet filled in from your answers so far, with the reason for each mark. It uses two rules: cross out an option that an answer contradicts, and cross out a digit value when some card has no remaining option that allows it. Your summary will then say \u201cHint used\u201d. After a game you can step through the same worksheet turn by turn.</p>'
   + '<p><b>Playing a friend\u2019s game.</b> Paste their summary into the Game code box. You get the same puzzle, and their score stays on screen to beat. Your own summary then says how you compared.</p>'
-  + '<p><b>Passing a game on.</b> “Export table” works at any point in a game. “Import a table” on the New puzzle screen loads one: an unfinished table continues from its last row, a finished one opens on its analysis. Worksheet marks do not travel, and an imported game says “Imported table” in its summary.</p>';
+  + '<p><b>Passing a game on.</b> “Export table” works at any point in a game. “Import a table” on the New puzzle screen loads one: an unfinished table continues from its last row, a finished one opens on its analysis. Worksheet marks do not travel, and an imported game says “Imported table” in its summary. The New puzzle screen lists your last ' + RECENT_MAX + ' games under Recent games; older ones are deleted, so export any game you want to keep.</p>';
 function closeModal() { modal.hidden = true; modal.innerHTML = ''; modal.onclick = null; }
 function ask(html, ok) {
   return new Promise(res => {
@@ -914,6 +953,7 @@ app.addEventListener('click', async e => {
   }
   else if (a === 'export') showText('Truth table' + (S.won ? '' : ' so far') + '. Spoiler: it contains every code you tried. Anyone can load it with “Import a table” on the New puzzle screen. Settings line: ' + SETTINGS_KEY, exportText());
   else if (a === 'import') showImport();
+  else if (a === 'recent') { const s = readGame(b.dataset.id); if (s && resume(s)) { ui.step = null; ui.hint = false; LS.set('last', gameId(s)); } render(); }
   else if (a === 'copyshare') { const note = { set textContent(v) { say(v === 'Copied.' ? 'Summary copied.' : 'Copying is blocked here. Select the summary text and copy it by hand.'); render(); } }; copy(shareText(verdict()), note, null); }
   else if (a === 'restart') { if (await ask('Restart this puzzle? Your table and marks will be cleared.', 'Restart')) startGame(P, S.showCount, true, S.gotd); }
   else if (a === 'again') startGame(P, S.showCount, true, S.gotd);
