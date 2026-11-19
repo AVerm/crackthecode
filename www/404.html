@@ -261,6 +261,45 @@ pre.out{margin:0;font-family:var(--math);font-size:15px;white-space:pre-wrap;ove
 .start.recent>button{height:auto;min-height:38px}
 .start.recent>.ghost{border-radius:5px;font-size:15px;font-weight:600}
 
+/* Touch and access (Apple: 44pt hit areas; WCAG 2.2: 24 px minimum). Where a control must look small,
+   an invisible margin of hit area surrounds it; gaps keep neighbouring hit areas from overlapping. */
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.ghost,.primary{min-height:36px;position:relative}
+.ghost::before,.primary::before{content:"";position:absolute;inset:-4px 0}
+.tools{gap:8px 6px}
+.endb{gap:10px 8px}
+/* digit steppers: the key stays small, the button around it is 40 tall and as wide as its column */
+.zone .stepper{gap:0;width:100%;max-width:44px}
+.zone .pm{width:100%;height:40px;background:none;border-radius:0;position:relative;z-index:0;line-height:40px}
+.zone .pm::after{content:"";position:absolute;left:50%;top:50%;width:30px;height:26px;margin:-13px 0 0 -15px;background:var(--paper);border-radius:6px;z-index:-1}
+.zone .dv.cur{height:30px;line-height:30px}
+/* tick boxes: the box is drawn, the button fills its cell */
+.box{width:100%;max-width:44px;height:44px;border:none;background:none;position:relative;z-index:0;color:var(--accent-ink)}
+.box::after{content:"";position:absolute;left:50%;top:50%;width:24px;height:24px;margin:-12px 0 0 -12px;border:1px solid var(--ink);border-radius:3px;background:var(--paper);box-sizing:border-box;z-index:-1}
+.box.on,.box.pending{background:none}
+.box.on::after,.box.pending::after{background:var(--accent);border-color:var(--accent)}
+.input>.c.tickwrap{padding-top:22px}
+.tickwrap .r{line-height:24px;margin-top:10px}
+.acts .go,.zone .acts .know{min-height:44px;height:auto}
+.input>.c.acts{padding-top:22px}
+/* worksheet: 40 px digit keys, taller option chips with room between rows */
+.digits,.zone .digits{grid-template-columns:repeat(3,40px);gap:4px}
+.digits .mark{height:40px;font-size:19px}
+.zone .chips{gap:8px 6px}
+.chip{min-height:36px;padding:5px 11px;position:relative}
+.chip::before{content:"";position:absolute;inset:-4px 0}
+@media (max-width:380px){ .digits,.zone .digits{grid-template-columns:repeat(3,36px)} .digits .mark{height:36px} }
+/* aids: the whole line is the target */
+.opt{min-height:44px;align-items:center;padding:4px 0}
+.opt input{width:20px;height:20px;margin-top:0}
+.start>input,.start>select,.foldsel,.start>.primary{height:44px}
+/* messages keep a fixed line under the test row, so the worksheet never jumps */
+.status.slot,.status.slot:empty{display:block;min-height:1.45em;margin:4px 0 0;font-size:13px}
+/* not by colour alone: a contradicting cell is ringed, and marks new at a review step are ringed in blue */
+.r.contra{box-shadow:0 0 0 2px var(--false)}
+.sp .spgrid .new{box-shadow:inset 0 0 0 1.5px var(--accent);border-radius:50%}
+.sp .spopts .new{box-shadow:0 0 0 1.5px var(--accent);border-radius:4px;padding:0 3px}
+
 .nf{max-width:34rem;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:14px}
 .nf h1{font-family:var(--math);font-style:italic;font-weight:600;font-size:26px;letter-spacing:.01em;margin:0}
 .nf p{margin:0}

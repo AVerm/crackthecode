@@ -260,10 +260,50 @@ pre.out{margin:0;font-family:var(--math);font-size:15px;white-space:pre-wrap;ove
 .recinfo .code{font-family:var(--math);font-size:15px;color:var(--ink);letter-spacing:.03em}
 .start.recent>button{height:auto;min-height:38px}
 .start.recent>.ghost{border-radius:5px;font-size:15px;font-weight:600}
+
+/* Touch and access (Apple: 44pt hit areas; WCAG 2.2: 24 px minimum). Where a control must look small,
+   an invisible margin of hit area surrounds it; gaps keep neighbouring hit areas from overlapping. */
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.ghost,.primary{min-height:36px;position:relative}
+.ghost::before,.primary::before{content:"";position:absolute;inset:-4px 0}
+.tools{gap:8px 6px}
+.endb{gap:10px 8px}
+/* digit steppers: the key stays small, the button around it is 40 tall and as wide as its column */
+.zone .stepper{gap:0;width:100%;max-width:44px}
+.zone .pm{width:100%;height:40px;background:none;border-radius:0;position:relative;z-index:0;line-height:40px}
+.zone .pm::after{content:"";position:absolute;left:50%;top:50%;width:30px;height:26px;margin:-13px 0 0 -15px;background:var(--paper);border-radius:6px;z-index:-1}
+.zone .dv.cur{height:30px;line-height:30px}
+/* tick boxes: the box is drawn, the button fills its cell */
+.box{width:100%;max-width:44px;height:44px;border:none;background:none;position:relative;z-index:0;color:var(--accent-ink)}
+.box::after{content:"";position:absolute;left:50%;top:50%;width:24px;height:24px;margin:-12px 0 0 -12px;border:1px solid var(--ink);border-radius:3px;background:var(--paper);box-sizing:border-box;z-index:-1}
+.box.on,.box.pending{background:none}
+.box.on::after,.box.pending::after{background:var(--accent);border-color:var(--accent)}
+.input>.c.tickwrap{padding-top:22px}
+.tickwrap .r{line-height:24px;margin-top:10px}
+.acts .go,.zone .acts .know{min-height:44px;height:auto}
+.input>.c.acts{padding-top:22px}
+/* worksheet: 40 px digit keys, taller option chips with room between rows */
+.digits,.zone .digits{grid-template-columns:repeat(3,40px);gap:4px}
+.digits .mark{height:40px;font-size:19px}
+.zone .chips{gap:8px 6px}
+.chip{min-height:36px;padding:5px 11px;position:relative}
+.chip::before{content:"";position:absolute;inset:-4px 0}
+@media (max-width:380px){ .digits,.zone .digits{grid-template-columns:repeat(3,36px)} .digits .mark{height:36px} }
+/* aids: the whole line is the target */
+.opt{min-height:44px;align-items:center;padding:4px 0}
+.opt input{width:20px;height:20px;margin-top:0}
+.start>input,.start>select,.foldsel,.start>.primary{height:44px}
+/* messages keep a fixed line under the test row, so the worksheet never jumps */
+.status.slot,.status.slot:empty{display:block;min-height:1.45em;margin:4px 0 0;font-size:13px}
+/* not by colour alone: a contradicting cell is ringed, and marks new at a review step are ringed in blue */
+.r.contra{box-shadow:0 0 0 2px var(--false)}
+.sp .spgrid .new{box-shadow:inset 0 0 0 1.5px var(--accent);border-radius:50%}
+.sp .spopts .new{box-shadow:0 0 0 1.5px var(--accent);border-radius:4px;padding:0 3px}
 </style>
 </head>
 <body>
 <main id="app"></main>
+<div id="live" class="sr" aria-live="polite"></div>
 <noscript><div class="nojs"><h1>Crack the Code!</h1><p><b>This game needs JavaScript, and it is turned off in this browser.</b></p><p>Everything runs on your own device: the page makes no network requests, and your games are saved only in this browser. Turn JavaScript on for this site, then reload the page.</p></div></noscript>
 <div id="modal" hidden></div>
 <script>
@@ -565,8 +605,8 @@ function solverPanel(sol) {
   st.forEach((g, i) => { svg += '<g class="pt' + (i === cur ? ' on' : '') + '" data-act="sp-go" data-i="' + i + '"><rect x="' + (x(i) - 30).toFixed(1) + '" y="0" width="60" height="' + H + '" fill="transparent"/><circle cx="' + x(i).toFixed(1) + '" cy="' + y(g.after).toFixed(1) + '" r="' + (i === cur ? 4 : 2.5) + '"/><text class="v" x="' + x(i).toFixed(1) + '" y="' + (y(g.after) - 8).toFixed(1) + '">' + g.after + '</text><text class="t" x="' + x(i).toFixed(1) + '" y="94">' + esc(g.top) + '</text><text class="t" x="' + x(i).toFixed(1) + '" y="108">' + esc(g.bot) + '</text></g>'; });
   svg += '</svg>';
   let ws = '<div class="spgrid">' + DIG.map(d => '<i class="h">' + d + '</i>').join('');
-  for (let v = 1; v <= 5; v++) for (let d = 0; d < 3; d++) ws += '<i class="' + (s.dom[d].includes(v) ? '' : 'off') + (s.d.includes(d + ':' + v) ? ' new' : '') + '">' + v + '</i>';
-  ws += '</div><div class="spopts">' + P.preds.map((p, i) => '<div><b class="letter">' + LET[i] + '</b>' + p.options.map((o, k) => '<span class="' + (s.opts[i].includes(k) ? (s.opts[i].length === 1 ? 'only' : '') : 'off') + (s.o.includes(i + ':' + k) ? ' new' : '') + '">' + esc(o.l) + '</span>').join('') + '</div>').join('') + '</div>';
+  for (let v = 1; v <= 5; v++) for (let d = 0; d < 3; d++) ws += '<i class="' + (s.dom[d].includes(v) ? '' : 'off') + (s.d.includes(d + ':' + v) ? ' new' : '') + '"><span class="sr">' + DIG[d] + ' </span>' + v + (s.dom[d].includes(v) ? '' : '<span class="sr">' + (s.d.includes(d + ':' + v) ? ' (ruled out at this step)' : ' (ruled out)') + '</span>') + '</i>';
+  ws += '</div><div class="spopts">' + P.preds.map((p, i) => '<div><b class="letter">' + LET[i] + '</b>' + p.options.map((o, k) => '<span class="' + (s.opts[i].includes(k) ? (s.opts[i].length === 1 ? 'only' : '') : 'off') + (s.o.includes(i + ':' + k) ? ' new' : '') + '">' + esc(o.l) + (s.opts[i].includes(k) ? (s.opts[i].length === 1 ? '<span class="sr"> (the only one left)</span>' : '') : '<span class="sr">' + (s.o.includes(i + ':' + k) ? ' (ruled out at this step)' : ' (ruled out)') + '</span>') + '</span>').join('') + '</div>').join('') + '</div>';
   return '<div class="sp"><div class="spchart">' + svg + '</div><div class="spside"><div class="spnav"><button class="ghost" data-act="sp-prev" data-fk="spprev"' + (cur === 0 ? ' disabled' : '') + ' aria-label="previous step">‹ Back</button><span>' + (cur === 0 ? 'Start' : 'Step ' + cur + ' of ' + (n - 1)) + '</span><button class="ghost" data-act="sp-next" data-fk="spnext"' + (cur === n - 1 ? ' disabled' : '') + ' aria-label="next step">Next ›</button></div>'
     + '<div class="spws">' + ws + '</div><div class="spwhy"><p><b>' + esc(s.ev) + '</b> · at most ' + plural(s.after, 'code') + '</p><ul>' + s.why.map(w => '<li>' + esc(w) + '</li>').join('') + '</ul></div></div></div>';
 }
@@ -683,6 +723,14 @@ function predSelect(i) {
 }
 function formPuzzle() { const st = form.rows.map((r, i) => rowStatus(i)); if (st.some(s => !s.ok)) return null; try { return buildPuzzle(st.map(s => s.pid), st.map(s => s.mask)); } catch (e) { return null; } }
 function checkForm() { const pz = formPuzzle(); form.report = pz ? { pz } : { error: 'Every line needs a predicate number and a checker number that belongs to it.' }; }
+function codeProblem(text) {   // a specific reason a code-box entry was refused
+  const words = String(text).trim().split(/\s+/);
+  if (words.length > 2) return 'No game code found in that text. A summary starts with a line like “' + TITLE + ' 1CJ0-A72C-7YVF”.';
+  const s = words.join('').toUpperCase().replace(/[\s-]/g, '').replace(/[IL]/g, '1').replace(/O/g, '0'), bad = Array.from(s).find(ch => A32.indexOf(ch) < 0);
+  if (bad) return '“' + bad + '” cannot appear in a game code. Codes use digits and letters, but never U.';
+  if (s[0] !== CODE_VERSION) return 'Game codes start with ' + CODE_VERSION + ', like 1CJ0-A72C-7YVF.';
+  return 'A character looks mistyped or missing: the code’s last character, its check, does not match. Compare it with the original.';
+}
 function loadCode(code) { const g = decodeGame(code); if (!g) return false; const pz = buildPuzzle(g.pids, g.masks); form.rows = rowsOf(pz); form.code = pz.gid; form.codeBad = false; form.show = false; form.report = { pz }; form.gotd = null; form.note = ''; form.rival = null; return true; }
 // The code box also takes a friend's pasted summary: their game, with their score to beat.
 function gotdModes(date, gid) {   // which mode set, if any, makes this code the game of that day: 'mine', a description, or null
@@ -770,14 +818,14 @@ function renderSetup() {
     h += '<p class="hint">A ticked mode is guaranteed; an unticked one is left to chance. The modes also decide which game of the day you get, which starter puzzles the list shows, and what the New buttons make.</p>';
   }
   h += '<div class="lbl">Game code</div><div class="start"><input id="code" aria-label="Game code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="a code, or a friend’s summary" value="' + esc(form.code) + '"><button class="primary" id="codeplay" data-act="play"' + (canPlay() ? '' : ' disabled') + '>' + playWord() + '</button><select id="bank" aria-label="Game list">' + bankHtml() + '</select></div>';
-  h += '<span class="res' + (form.codeBad ? ' bad' : '') + '" id="codemsg">' + (form.codeBad ? 'That is not a game code or a summary.' : '') + '</span><div id="report">' + reportHtml(false) + '</div>';
+  h += '<span class="res' + (form.codeBad ? ' bad' : '') + '" id="codemsg">' + (form.codeBad ? esc(codeProblem(form.code)) : '') + '</span><div id="report">' + reportHtml(false) + '</div>';
   const rec = recentGames();
   if (rec.length) h += '<div class="lbl">Recent games <span class="note">only the last ' + RECENT_MAX + ' are kept</span></div>' + rec.map(s => {
     const d = new Date(s.startedAt), day = isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     const what = s.won ? 'won in ' + plural(s.turns, 'turn') : 'turn ' + (s.turns + 1) + ', in progress';
     return '<div class="start recent"><div class="recinfo"><span class="code">' + esc(s.gid) + '</span><span>' + esc((s.gotd ? 'Game of the day ' + s.gotd : day) + ' \u00b7 ' + what) + '</span></div><button class="' + (s.won ? 'ghost' : 'primary') + '" data-act="recent" data-id="' + esc(gameId(s)) + '">' + (s.won ? 'Review' : 'Resume') + '</button></div>';
   }).join('');
-  h += '<div class="lbl">Exported table</div><div class="start"><button class="foldsel" data-act="import">Paste a table to continue or review it</button></div>';
+  h += '<div class="lbl">Exported table</div><div class="start"><button class="foldsel" data-act="import" data-fk="import">Paste a table to continue or review it</button></div>';
   h += '<div class="lbl">Build a puzzle</div><div class="start"><button class="foldsel" data-act="fold" data-f="fbuild" aria-expanded="' + !!form.fbuild + '">' + (form.fbuild ? '\u25be ' : '\u25b8 ') + 'Predicates and checkers</button></div>';
   if (form.fbuild) {
     h += '<div id="rows">' + rowsHtml() + '</div>';
@@ -806,51 +854,52 @@ function renderPlay() {
   let h = '<header class="top"><h1>' + TITLE + '</h1><div class="tools"><button class="ghost" data-act="tutorial" data-fk="tut">How to play</button>' + (S.won ? '' : '<button class="ghost" data-act="hint" data-fk="hint">' + (ui.hint ? 'Hide hint' : 'Hint') + '</button>') + '<button class="ghost" data-act="export" data-fk="export">Export</button><button class="ghost" data-act="restart" data-fk="restart">Restart</button><button class="ghost" data-act="setup" data-fk="setup">New puzzle</button></div>';
   h += '<div class="meta"><span><span class="lbl">Game</span> <b>' + P.gid + '</b></span>' + (S.gotd ? '<span><span class="lbl">Game of the day</span> <b>' + esc(S.gotd) + '</b></span>' : '') + '<span><span class="lbl">' + (S.won ? 'Turns</span> <b>' + S.turns : 'Turn</span> <b>' + (S.turns + 1)) + '</b></span><span><span class="lbl">Evaluations</span> <b>' + S.evals + '</b></span>' + (S.rival ? '<span class="rival"><span class="lbl">Friend</span> <b>' + rivalWord(S.rival) + '</b></span>' : '') + '</div></header>';
   h += '<section class="facts"><div class="lbl">Puzzle facts</div><p>' + (P.solutions === 1 ? 'One solution' : S.showCount ? P.solutions + ' solutions' : 'More than one solution') + '</p><p>' + (P.singleOption ? 'One secret option per predicate' : 'Some predicates have more than one secret option') + '</p><p>' + (P.overlap ? 'The answer fits more than one listed option on at least one predicate' : 'The answer fits exactly one listed option on every predicate') + '</p></section>';
-  h += '<section class="board" style="--n:' + n + '" aria-label="Truth table"><div class="lbl">Truth table</div><div class="row head">' + DIG.map(d => '<span class="c">' + d + '</span>').join('') + LET.slice(0, n).map(l => '<span class="c">' + l + '</span>').join('') + '<span class="c"></span></div>';
+  h += '<section class="board" style="--n:' + n + '" aria-label="Truth table"><div class="lbl">Truth table</div><div class="row head" aria-hidden="true">' + DIG.map(d => '<span class="c">' + d + '</span>').join('') + LET.slice(0, n).map(l => '<span class="c">' + l + '</span>').join('') + '<span class="c"></span></div>';
   S.rows.forEach((r, ri) => {
-    h += '<div class="row hist' + (r.guess ? ' guess' : '') + '">';
-    r.code.forEach((v, d) => { h += '<span class="c d">' + v + (d === 2 && r.guess ? '<span class="dag" title="guess">' + DAG + '</span>' : '') + '</span>'; });
+    const said = P.preds.map((p, i) => LET[i] + (i in r.res ? (r.res[i] ? ' true' : ' false') + (contra.has(ri + ':' + i) ? ' (rules out your guess)' : '') : ' not tested')).join(', ');
+    h += '<div class="row hist' + (r.guess ? ' guess' : '') + '" role="group" aria-label="' + (r.guess ? 'Guess ' : 'Code ') + cs(r.code) + ': ' + said + '">';
+    r.code.forEach((v, d) => { h += '<span class="c d" aria-hidden="true">' + v + (d === 2 && r.guess ? '<span class="dag" title="guess">' + DAG + '</span>' : '') + '</span>'; });
     for (let i = 0; i < n; i++) {
-      if (i in r.res) { const id = ri + ':' + i; h += '<span class="c"><span class="r ' + (r.res[i] ? 't' : 'f') + (echo.has(id) ? ' echo' : '') + (contra.has(id) ? ' contra' : '') + '">' + (r.res[i] ? T : F_) + '</span></span>'; }
-      else h += '<span class="c"></span>';
+      if (i in r.res) { const id = ri + ':' + i; h += '<span class="c" aria-hidden="true"><span class="r ' + (r.res[i] ? 't' : 'f') + (echo.has(id) ? ' echo' : '') + (contra.has(id) ? ' contra' : '') + '">' + (r.res[i] ? T : F_) + '</span></span>'; }
+      else h += '<span class="c" aria-hidden="true"></span>';
     }
-    h += '<span class="c"></span></div>';
+    h += '<span class="c" aria-hidden="true"></span></div>';
   });
   if (!S.won) {
     h += '<div class="zone next"><div class="row input">';
     for (let d = 0; d < 3; d++) {
       const v = S.dial[d];
-      h += '<div class="c"><div class="stepper"><button class="pm" data-act="inc" data-d="' + d + '" aria-label="increase ' + DIG[d] + '" data-fk="inc' + d + '">+</button>';
-      h += '<span class="dv cur m' + markD(d, v - 1) + '" aria-label="' + DIG[d] + ' is ' + v + '">' + v + '</span>';
-      h += '<button class="pm" data-act="dec" data-d="' + d + '" aria-label="decrease ' + DIG[d] + '" data-fk="dec' + d + '">−</button></div></div>';
+      h += '<div class="c"><div class="stepper"><button class="pm" data-act="inc" data-d="' + d + '" aria-label="increase ' + DIG[d] + ', now ' + v + '" data-fk="inc' + d + '">+</button>';
+      h += '<span class="dv cur m' + markD(d, v - 1) + '" aria-hidden="true">' + v + '</span>';
+      h += '<button class="pm" data-act="dec" data-d="' + d + '" aria-label="decrease ' + DIG[d] + ', now ' + v + '" data-fk="dec' + d + '">−</button></div></div>';
     }
     for (let i = 0; i < n; i++) {
       h += '<div class="c tickwrap">';
-      if (i in kn) h += '<span class="r echo ' + (kn[i].val ? 't' : 'f') + '" title="already evaluated on this code">' + (kn[i].val ? T : F_) + '</span>';
+      if (i in kn) h += '<span class="r echo ' + (kn[i].val ? 't' : 'f') + '" title="already evaluated on this code"><span aria-hidden="true">' + (kn[i].val ? T : F_) + '</span><span class="sr">' + LET[i] + ' is already ' + (kn[i].val ? 'true' : 'false') + ' on this code</span></span>';
       else { const on = S.ticks.includes(i); h += '<button class="box' + (ui.pending ? ' pending' : on ? ' on' : '') + '" data-act="tick" data-i="' + i + '" aria-pressed="' + (on || ui.pending) + '" aria-label="evaluate ' + LET[i] + '" data-fk="tick' + i + '">' + (on || ui.pending ? '✓' : '') + '</button>'; }
       h += '</div>';
     }
     h += '<div class="c acts"><button class="go" data-act="eval" data-fk="eval"' + (canEval ? '' : ' disabled') + '>Evaluate</button><button class="know" data-act="know" data-fk="know" title="I Know The Answer"' + (canKnow ? '' : ' disabled') + '>I know the answer</button></div></div></div>';
   }
-  h += '</section><p class="status' + (ui.bad ? ' bad' : '') + '" role="status">' + esc(ui.msg) + '</p>';
+  h += '</section>' + (S.won ? '' : '<p class="status slot' + (ui.bad ? ' bad' : '') + '">' + esc(ui.msg) + '</p>');
 
-  if (!S.won && ui.hint) { const sol = solverRun(S.rows); h += '<section class="end"><h2>What your answers show so far</h2>' + solverPanel(sol) + '<p class="hint">This worksheet is filled in from the answers in your table and nothing else: an option is crossed out when an answer contradicts it, and a digit value when no remaining option allows it. Crossed-out marks in blue are new at that step.</p></section>'; }
+  if (!S.won && ui.hint) { const sol = solverRun(S.rows); h += '<section class="end"><h2>What your answers show so far</h2>' + solverPanel(sol) + '<p class="hint">This worksheet is filled in from the answers in your table and nothing else: an option is crossed out when an answer contradicts it, and a digit value when no remaining option allows it. Marks ringed in blue are new at that step.</p></section>'; }
   if (S.won) {
     const win = S.rows[S.rows.length - 1], v = verdict();
     h += '<section class="end"><h2>' + cs(win.code) + ' is the code.</h2><dl class="stats"><div><dt>Turns</dt><dd>' + S.turns + '</dd></div><div><dt>Evaluations</dt><dd>' + S.evals + '</dd></div><div><dt>Wrong guesses</dt><dd>' + S.wrong + '</dd></div><div><dt>Time</dt><dd>' + (S.imported ? '—' : fmtDur(S.finishedAt - S.startedAt)) + '</dd></div></dl>';
     if (S.rival) { const d = rivalDiff(); h += '<p class="verdict">' + (d < 0 ? 'You beat your friend' : d > 0 ? 'Your friend beat you' : 'You tied with your friend') + ': they took ' + rivalWord(S.rival) + '.</p>'; }
     h += '<p class="verdict">' + esc(v.text) + '</p>';
     h += solverPanel(v.sol);
-    h += '<p class="hint">The line shows the most codes still possible after each turn by crossing out on the worksheet alone: the remaining values for x, y and z multiplied together. Tap a point, or use Back and Next, to see that worksheet at that moment and why it changed. Crossed-out marks in blue are new at that step. Checking every code against your evaluations and the start-screen facts, ' + plural(v.exact, 'code') + ' remained possible when you guessed.</p>';
+    h += '<p class="hint">The line shows the most codes still possible after each turn by crossing out on the worksheet alone: the remaining values for x, y and z multiplied together. Tap a point, or use Back and Next, to see that worksheet at that moment and why it changed. Marks ringed in blue are new at that step. Checking every code against your evaluations and the start-screen facts, ' + plural(v.exact, 'code') + ' remained possible when you guessed.</p>';
     h += '<pre class="out">' + esc(shareText(v)) + '</pre><div class="endb"><button class="primary" data-act="copyshare" data-fk="copyshare">Copy summary</button><button class="ghost" data-act="export" data-fk="export2">Export table (spoiler)</button><button class="ghost" data-act="again" data-fk="again">Play again</button><button class="ghost" data-act="setup" data-fk="setup2">New puzzle</button></div></section>';
   }
 
   h += '<section class="zone ws"><div class="lbl">Worksheet <span class="note">tap to cross out, hold to circle' + (WORK ? '; a circle crosses out the rest of its column' + (P.singleOption ? ' or card' : '') : '') + '</span></div><div class="sheet"><div class="digits" role="group" aria-label="Digit worksheet">' + DIG.map(d => '<span class="dh">' + d + '</span>').join('');
-  for (let v = 1; v <= 5; v++) for (let d = 0; d < 3; d++) h += '<button class="mark m' + markD(d, v - 1) + '" data-mark="d:' + d + ':' + (v - 1) + '" data-fk="md' + d + v + '" aria-label="' + DIG[d] + ' ' + v + '">' + v + '</button>';
+  for (let v = 1; v <= 5; v++) for (let d = 0; d < 3; d++) h += '<button class="mark m' + markD(d, v - 1) + '" data-mark="d:' + d + ':' + (v - 1) + '" data-fk="md' + d + v + '" aria-label="' + DIG[d] + ' ' + v + STATE_WORD[markD(d, v - 1)] + '">' + v + '</button>';
   h += '</div><div class="cards">';
   P.preds.forEach((p, i) => {
     h += '<article class="card"><h3><span class="letter">' + LET[i] + '</span><span>' + esc(p.text) + '</span></h3><div class="chips">';
-    p.options.forEach((o, k) => { h += '<button class="chip mark m' + markO(i, k) + (determined(i, k) ? ' match' : '') + '" data-mark="o:' + i + ':' + k + '" data-fk="mo' + i + '_' + k + '">' + esc(o.l) + '</button>'; });
+    p.options.forEach((o, k) => { h += '<button class="chip mark m' + markO(i, k) + (determined(i, k) ? ' match' : '') + '" data-mark="o:' + i + ':' + k + '" data-fk="mo' + i + '_' + k + '" aria-label="' + LET[i] + ': ' + esc(o.l) + STATE_WORD[markO(i, k)] + '">' + esc(o.l) + '</button>'; });
     h += '</div></article>';
   });
   h += '</div></div></section><div class="lbl">Aids</div>' + optsHtml();
@@ -874,7 +923,17 @@ const TUTORIAL = '<h2>How to play</h2>'
   + '<p><b>Hints and the review.</b> Hint shows a worksheet filled in from your answers so far, with the reason for each mark. It uses two rules: cross out an option that an answer contradicts, and cross out a digit value when some card has no remaining option that allows it. Your summary will then say \u201cHint used\u201d. After a game you can step through the same worksheet turn by turn.</p>'
   + '<p><b>Playing a friend\u2019s game.</b> Paste their summary into the Game code box. You get the same puzzle, and their score stays on screen to beat. Your own summary then says how you compared.</p>'
   + '<p><b>Passing a game on.</b> “Export table” works at any point in a game. “Import a table” on the New puzzle screen loads one: an unfinished table continues from its last row, a finished one opens on its analysis. Worksheet marks do not travel, and an imported game says “Imported table” in its summary. The New puzzle screen lists your last ' + RECENT_MAX + ' games under Recent games; older ones are deleted, so export any game you want to keep.</p>';
-function closeModal() { modal.hidden = true; modal.innerHTML = ''; modal.onclick = null; }
+let opener = null;   // data-fk of the control that opened the dialog, so focus can go back to it
+function closeModal() {
+  modal.hidden = true; modal.innerHTML = ''; modal.onclick = null;
+  const el = opener && document.querySelector('[data-fk="' + opener + '"]'); if (el && !el.disabled) el.focus({ preventScroll: true });
+}
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Tab' || modal.hidden) return;
+  const f = Array.from(modal.querySelectorAll('button,textarea,input,select,[tabindex]')).filter(x => !x.disabled); if (!f.length) return;
+  const i = f.indexOf(document.activeElement);
+  if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); } else if (!e.shiftKey && (i === f.length - 1 || i < 0)) { e.preventDefault(); f[0].focus(); }
+});
 function ask(html, ok) {
   return new Promise(res => {
     modal.innerHTML = '<div class="dlg" role="dialog" aria-modal="true"><p>' + html + '</p><div class="dlgb"><button class="ghost" data-m="0">Cancel</button><button class="primary" data-m="1">' + esc(ok) + '</button></div></div>';
@@ -904,7 +963,10 @@ function copy(text, noteEl, area) {
   const fail = () => { if (area) { area.focus(); area.select(); } if (noteEl) noteEl.textContent = 'Copying is blocked here. The text is selected; copy it by hand.'; };
   try { navigator.clipboard.writeText(text).then(() => { if (noteEl) noteEl.textContent = 'Copied.'; }, fail); } catch (e) { fail(); }
 }
-function say(msg, bad) { ui.msg = msg; ui.bad = !!bad; }
+const STATE_WORD = ['', ', crossed out', ', circled'];
+// screen readers hear messages through one region that is never rebuilt
+function announce(msg) { const l = document.getElementById('live'); if (!l) return; l.textContent = ''; if (msg) setTimeout(() => { l.textContent = msg; }, 60); }
+function say(msg, bad) { ui.msg = msg; ui.bad = !!bad; announce(msg); }
 
 // ---------- actions ----------
 async function doEvaluate() {
@@ -915,7 +977,7 @@ async function doEvaluate() {
   if (!(await ask('Evaluate <span class="math">' + name + '</span>?', 'Evaluate'))) return;
   const res = {}; t.forEach(i => { res[i] = predVal(i, code); });
   S.rows.push({ code, res, guess: false, fresh: t });
-  S.turns += 1; S.evals += t.length; S.contra = []; S.ticks = []; ui.step = null;
+  S.turns += 1; S.evals += t.length; S.contra = []; S.ticks = []; ui.step = null; announce(name + ': ' + t.map(i => LET[i] + (res[i] ? ' true' : ' false')).join(', '));
   say(''); save(); render();
 }
 async function doKnow() {
@@ -931,11 +993,18 @@ async function doKnow() {
   else { S.wrong += 1; S.evals += fr.length; S.turns += Math.ceil(fr.length / 3); S.contra = contra; say(cs(code) + ' is not the code.' + (contra.length ? ' ' + plural(contra.length, 'earlier cell') + ' already ruled it out.' : ''), true); }
   save(); render();
 }
-function toggleMark(key, s) { const [ty, a, b] = key.split(':'), arr = ty === 'd' ? S.marks.d[+a] : S.marks.o[+a]; arr[+b] = arr[+b] === s ? 0 : s; save(); render(); }
+function toggleMark(key, s) {
+  const [ty, a, b] = key.split(':'), arr = ty === 'd' ? S.marks.d[+a] : S.marks.o[+a]; arr[+b] = arr[+b] === s ? 0 : s;
+  let tipped = false; try { tipped = !!localStorage.getItem(KEY + ':tip-hold'); } catch (e) { tipped = true; }
+  if (s === 1 && arr[+b] === 1 && !tipped) { say('Tip: press and hold a mark to circle it instead. On a keyboard, Shift+Enter.'); try { localStorage.setItem(KEY + ':tip-hold', '1'); } catch (e) {} }
+  else if (s === 2 && !tipped) { try { localStorage.setItem(KEY + ':tip-hold', '1'); } catch (e) {} }
+  save(); render();
+}
 function step(d, dir) { if (S.won) return; S.dial[d] = ((S.dial[d] - 1 + dir + 5) % 5) + 1; save(); render(); }
 
 app.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  if (b.dataset.fk) opener = b.dataset.fk;
   const a = b.dataset.act;
   if (a === 'inc' || a === 'dec') step(+b.dataset.d, a === 'inc' ? 1 : -1);
   else if (a === 'tick') { const i = +b.dataset.i, at = S.ticks.indexOf(i); if (at >= 0) S.ticks.splice(at, 1); else if (effTicks().length >= 3) say('Three predicates at most per turn.', true); else { S.ticks.push(i); if (ui.bad) say(''); } save(); render(); }
@@ -996,7 +1065,7 @@ app.addEventListener('input', e => {
     if (kind === 'summary') el.value = form.code;
     form.codeBad = !blank && !ok; if (!ok) form.report = null;
     const rw = document.getElementById('rows'); if (ok && rw) rw.innerHTML = rowsHtml();
-    const m = document.getElementById('codemsg'); m.textContent = form.codeBad ? 'That is not a game code or a summary.' : ''; m.className = 'res' + (form.codeBad ? ' bad' : '');
+    const m = document.getElementById('codemsg'); m.textContent = form.codeBad ? codeProblem(el.value) : ''; m.className = 'res' + (form.codeBad ? ' bad' : '');
     setReport();
   } else if (el.dataset && el.dataset.row !== undefined) { form.rows[+el.dataset.row][el.dataset.f] = el.value; syncFromRows(); }
 });
