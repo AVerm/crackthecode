@@ -1,7 +1,39 @@
 # Crack the Code!
 
-A solitaire deduction game for phones: find a three-digit code (each digit 1–5) by testing it against predicates that answer ⊤ or ⊥.
+A solitaire deduction game for phones: find a three-digit code (each digit 1–5) by testing it against predicates that answer ⊤ or ⊥. Play it at [crackthe.xyz](https://crackthe.xyz).
 
-The whole game is one self-contained file, `index.html`, with no build step and no network requests. Its icons sit beside it: `favicon.svg` and `favicon.ico` for browser tabs, and `apple-touch-icon.png` for phone home screens, each with a `-dark` twin that the page switches to whenever it is showing a dark theme. Open it in a browser or serve it with GitHub Pages (Settings → Pages → Deploy from a branch → `master`, `/ (root)`). The empty `.nojekyll` file tells Pages to serve the file as is.
+## What is served
+
+GitHub Pages publishes only the `www/` folder, through the workflow in `.github/workflows/pages.yml` (Settings → Pages → Source: GitHub Actions). It runs whenever a push changes `www/`. The folder holds:
+
+- `index.html`: the whole game in one self-contained file, with no network requests.
+- The icons: `favicon.svg` and `favicon.ico` for browser tabs and `apple-touch-icon.png` for phone home screens, each with a `-dark` twin the page switches to on a dark theme.
+
+The custom domain, crackthe.xyz, is set in the Pages settings.
 
 Saved games and settings live in each player's browser, per site address.
+
+## Sources
+
+`src/` is not served. `www/index.html` is built from it:
+
+| File | What it is |
+|---|---|
+| `app.js` | The game: engine, screens, worksheet, generator, saving |
+| `style.css` | All styles, including the themes |
+| `template.html` | The page shell the script and styles are poured into |
+| `library.json` | The 95 predicates and their checker cards |
+| `tm_compat.json` | Turing Machine criteria and verification numbers mapped onto the library |
+| `generate_puzzles.py` | Puzzle generator; the build uses it for the starter list, and it also runs on its own (`--help`) |
+| `build.py` | Builds `www/index.html` |
+| `test.js` | Engine tests run against the built page |
+| `icons/` | Sources for the home-screen icons |
+
+To rebuild and test (Python 3 and Node):
+
+```
+python3 src/build.py
+node src/test.js
+```
+
+The build is deterministic: the same sources always give the same page. The tests print a summary and report any failure as a line starting `FAIL`.
