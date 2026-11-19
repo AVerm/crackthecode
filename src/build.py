@@ -1,4 +1,4 @@
-"""Build www/index.html, the whole game in one file, from the sources in this folder.
+"""Build www/index.html, the whole game in one file, and www/404.html, from the sources in this folder.
 
 Run: python3 src/build.py   (then node src/test.js)
 The starter list is generated with a fixed seed, so the same sources always give the same page.
@@ -40,4 +40,8 @@ t = re.sub(r"<style>.*?</style>", lambda m: "<style>\n" + css + "</style>", t, f
 t = re.sub(r"<script>.*?</script>", lambda m: "<script>\n" + data + js + "</script>", t, flags=re.S)
 out = Path(sys.argv[1]) if len(sys.argv) > 1 else WWW / "index.html"
 open(out, "w", encoding="utf-8", newline="\n").write(t)
+# the not-found page Pages shows for any missing address: same styles and theme, links back to the game
+key = re.search(r"const KEY = '([^']+)'", js).group(1)
+nf = open(HERE / "404.html", encoding="utf-8").read().replace("/*CSS*/", css).replace("/*KEY*/", repr(key))
+if len(sys.argv) <= 1: open(WWW / "404.html", "w", encoding="utf-8", newline="\n").write(nf)
 print(len(BANK), "starter +", len(TMBANK), "manual puzzles;", len(t), "bytes; data", len(data), "; css", len(css), "; js", len(js), "; list strings", sum(len(b) for b in BANK + TMBANK), "chars")

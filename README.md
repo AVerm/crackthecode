@@ -7,6 +7,7 @@ A solitaire deduction game for phones: find a three-digit code (each digit 1–5
 GitHub Pages publishes only the `www/` folder, through the workflow in `.github/workflows/pages.yml` (Settings → Pages → Source: GitHub Actions). It runs whenever a push changes `www/`. The folder holds:
 
 - `index.html`: the whole game in one self-contained file, with no network requests.
+- `404.html`: the page Pages shows for any address that does not exist, in the game's styles and theme.
 - The icons: `favicon.svg` and `favicon.ico` for browser tabs and `apple-touch-icon.png` for phone home screens, each with a `-dark` twin the page switches to on a dark theme.
 
 The custom domain, crackthe.xyz, is set in the Pages settings.
@@ -22,10 +23,11 @@ Saved games and settings live in each player's browser, per site address.
 | `app.js` | The game: engine, screens, worksheet, generator, saving |
 | `style.css` | All styles, including the themes |
 | `template.html` | The page shell the script and styles are poured into |
+| `404.html` | The not-found page's shell; the build pours the same styles into it |
 | `library.json` | The 95 predicates and their checker cards |
 | `tm_compat.json` | Turing Machine criteria and verification numbers mapped onto the library |
 | `generate_puzzles.py` | Puzzle generator; the build uses it for the starter list, and it also runs on its own (`--help`) |
-| `build.py` | Builds `www/index.html` |
+| `build.py` | Builds `www/index.html` and `www/404.html` |
 | `test.js` | Engine tests run against the built page |
 | `icons/` | Sources for the home-screen icons |
 

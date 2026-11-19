@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Not found · Crack the Code!</title>
+<link rel="icon" id="ico-svg" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" id="ico-ico" href="/favicon.ico" sizes="16x16 32x32">
+<link rel="apple-touch-icon" id="ico-apple" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#ffffff">
+<style>
+/*CSS*/
+.nf{max-width:34rem;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:14px}
+.nf h1{font-family:var(--math);font-style:italic;font-weight:600;font-size:26px;letter-spacing:.01em;margin:0}
+.nf p{margin:0}
+.nf .eval{font-family:var(--math);font-size:24px;line-height:1.3;overflow-wrap:anywhere;margin-top:10px}
+.nf .eval .no{color:var(--false)}
+.nf a.primary{display:inline-block;text-decoration:none}
+</style>
+</head>
+<body>
+<main class="nf">
+<h1>Crack the Code!</h1>
+<div class="lbl">Page not found</div>
+<p class="eval">exists(<span id="where">this page</span>) = <span class="no">⊥</span></p>
+<p>There is nothing at this address. Your games are safe: they are saved in this browser, not at any address.</p>
+<p><a class="primary big" href="/">Play Crack the Code!</a></p>
+</main>
+<script>
+// Same theme and icons as the game: the choice saved under Aids → Theme, or the device's setting.
+(function () {
+  var theme = 'auto';
+  try { theme = localStorage.getItem(/*KEY*/ + ':theme') || 'auto'; } catch (e) {}
+  if (theme !== 'auto' && theme !== 'light' && theme !== 'dark' && theme !== 'black') theme = 'auto';
+  var r = document.documentElement; if (theme !== 'auto') r.setAttribute('data-theme', theme);
+  var m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = getComputedStyle(r).getPropertyValue('--paper').trim() || '#ffffff';
+  var dark = theme === 'dark' || theme === 'black' || (theme === 'auto' && !!window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  if (dark) [['ico-svg', '/favicon-dark.svg'], ['ico-ico', '/favicon-dark.ico'], ['ico-apple', '/apple-touch-icon-dark.png']].forEach(function (x) { document.getElementById(x[0]).setAttribute('href', x[1]); });
+  var p = location.pathname; try { p = decodeURIComponent(p); } catch (e) {}
+  document.getElementById('where').textContent = p;
+})();
+</script>
+</body>
+</html>
