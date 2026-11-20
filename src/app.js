@@ -520,7 +520,8 @@ function renderSetup() {
   h += '<div class="lbl">Game code</div><div class="start"><input id="code" aria-label="Game code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="a code, or a friend’s summary" value="' + esc(form.code) + '"><button class="primary" id="codeplay" data-act="play"' + (canPlay() ? '' : ' disabled') + '>' + playWord() + '</button><select id="bank" aria-label="Game list">' + bankHtml() + '</select></div>';
   h += '<span class="res' + (form.codeBad ? ' bad' : '') + '" id="codemsg">' + (form.codeBad ? esc(codeProblem(form.code)) : '') + '</span><div id="report">' + reportHtml(false) + '</div>';
   const rec = recentGames();
-  if (rec.length) h += '<div class="lbl">Recent games <span class="note">only the last ' + RECENT_MAX + ' are kept</span></div>' + rec.map(s => {
+  let recH = '';   // recent games go last, below Aids, so the rows that start a game stay together
+  if (rec.length) recH = '<div class="lbl">Recent games <span class="note">only the last ' + RECENT_MAX + ' are kept</span></div>' + rec.map(s => {
     const d = new Date(s.startedAt), day = isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     const what = s.won ? 'won in ' + plural(s.turns, 'turn') : 'turn ' + (s.turns + 1) + ', in progress';
     return '<div class="start recent"><div class="recinfo"><span class="code">' + esc(s.gid) + '</span><span>' + esc((s.gotd ? 'Game of the day ' + s.gotd : day) + ' \u00b7 ' + what) + '</span></div><button class="' + (s.won ? 'ghost' : 'primary') + '" data-act="recent" data-id="' + esc(gameId(s)) + '">' + (s.won ? 'Review' : 'Resume') + '</button></div>';
@@ -534,7 +535,7 @@ function renderSetup() {
     h += '<p class="hint">These lines and the game code are the same puzzle; changing either updates the other. Pick each predicate from its list or type its number (they run from 101); checker numbers run from 1000. Each line\u2019s checker number names its secret option; for two secret options on one predicate, type both checker numbers in its box. New predicates uses as many predicates as there are lines. Turing Machine criteria numbers (1 to 48) and verification numbers (201 to 798) are converted automatically.</p>';
   }
   h += '<h2>Aids</h2>' + optsHtml();
-  h += '</section>';
+  h += recH + '</section>';
   app.innerHTML = h;
 }
 function syncFromRows() {   // rows edited by hand: refresh row messages and the game code
