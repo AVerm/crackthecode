@@ -468,8 +468,8 @@ function optsHtml() {
     + '<div class="theme" role="group" aria-label="Colour theme"><span>Theme</span>' + THEMES.map(x => '<button class="ghost" data-act="theme" data-v="' + x[0] + '" aria-pressed="' + (THEME === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>';
 }
 function aidsWord() {   // the folded Aids row says what is on, so it need not be opened to check
-  const on = [WORK ? 'workbook' : '', HL ? 'highlighter' : ''].filter(Boolean);
-  return 'Aids and theme (' + (on.length ? on.join(' and ') + ' on' : 'none on') + ' \u00b7 ' + THEMES.find(x => x[0] === THEME)[1] + ')';
+  const on = [WORK ? 'Workbook' : '', HL ? (WORK ? 'highlighter' : 'Highlighter') : ''].filter(Boolean);
+  return (on.length ? on.join(', ') : 'No aids') + ' \u00b7 ' + THEMES.find(x => x[0] === THEME)[1];   // the row's label already says Aids & theme
 }
 const canPlay = () => !!(form.report && form.report.pz && form.report.pz.solutions > 0);
 function playWord() { return 'Play'; }   // Resume lives only in the Continue row; Play on a puzzle you are partway through still picks up where you left off
@@ -545,7 +545,7 @@ function renderSetup() {
     h += '<div id="report2">' + reportHtml(true) + '</div>';
     h += '<p class="hint">These lines and the game code are the same puzzle; changing either updates the other. Pick each predicate from its list or type its number (they run from 101); checker numbers run from 1000. Each line\u2019s checker number names its secret option; for two secret options on one predicate, type both checker numbers in its box. New predicates uses as many predicates as there are lines. Turing Machine criteria numbers (1 to 48) and verification numbers (201 to 798) are converted automatically.</p>';
   }
-  h += '<div class="lbl">Aids</div><div class="start"><button class="foldsel" data-act="fold" data-f="faids" id="aidsfold" aria-expanded="' + !!form.faids + '">' + (form.faids ? '\u25be ' : '\u25b8 ') + aidsWord() + '</button></div>';
+  h += '<div class="lbl">Aids &amp; theme</div><div class="start"><button class="foldsel" data-act="fold" data-f="faids" id="aidsfold" aria-expanded="' + !!form.faids + '">' + (form.faids ? '\u25be ' : '\u25b8 ') + aidsWord() + '</button></div>';
   if (form.faids) h += optsHtml();
   h += recH + '</section>';
   app.innerHTML = h;
