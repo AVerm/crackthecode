@@ -302,7 +302,7 @@ pre.out{margin:0;font-family:var(--math);font-size:15px;white-space:pre-wrap;ove
 /* header: How to play, Hint and a menu for the rest */
 .menuwrap{position:relative}
 .ghost.more{min-width:44px;font-size:18px;line-height:1;letter-spacing:.05em}
-.menu{position:absolute;right:0;top:calc(100% + 4px);z-index:20;display:flex;flex-direction:column;min-width:190px;background:var(--paper);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.18),0 0 0 1px var(--faint);padding:6px}
+.menu{position:absolute;left:0;max-width:calc(100vw - 32px);top:calc(100% + 4px);z-index:20;display:flex;flex-direction:column;min-width:190px;background:var(--paper);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.18),0 0 0 1px var(--faint);padding:6px}
 .menu button{font:inherit;font-size:15px;text-align:left;background:none;border:none;color:var(--ink);padding:0 12px;min-height:44px;border-radius:6px}
 .menu button:hover,.menu button:focus-visible{background:var(--zone)}
 .tools{flex-wrap:nowrap}
@@ -331,3 +331,13 @@ button.jump{font:inherit;color:inherit;background:none;border:none;padding:0;cur
 .end h2.sub{font-size:19px;margin-top:10px}
 .end pre.out{background:var(--zone);border-radius:8px;padding:10px 12px;margin-top:-4px}
 .card h3 button.letter.jump{font-family:var(--math);font-style:italic;font-weight:600;font-size:19px}
+
+/* review panel: the chart keeps its natural width (wrapping under the worksheet when there is no room), and each card is its letter beside wrapping chips */
+.spchart{flex:0 1 auto;max-width:100%}
+.spside{flex:1 1 300px;max-width:560px}
+.sp .spws{align-items:flex-start}
+.sp .spopts{flex:1 1 auto;gap:6px}
+.sp .spopts>div{display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:0 4px}
+.sp .spopts .letter{margin:0;line-height:24px}
+.spchips{display:flex;flex-wrap:wrap;gap:4px}
+.sp .spchips>span:not(.sr){white-space:normal;line-height:1.3;padding:2px 8px}
