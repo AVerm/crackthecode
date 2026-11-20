@@ -11,7 +11,7 @@ LIB.cards.forEach(c => { CARD[c[0]] = { nums: c[1], t: c[2] }; c[1].forEach(n =>
 const ALL = []; for (let x = 1; x <= 5; x++) for (let y = 1; y <= 5; y++) for (let z = 1; z <= 5; z++) ALL.push([x, y, z]);
 
 let P = null, S = null, view = 'setup';
-const ui = { pending: false, msg: '', bad: false, step: null, hint: false };
+const ui = { pending: false, msg: '', bad: false, step: null, hint: false, menu: false };
 const form = { gotd: null, note: '', gdate: '', code: '', codeBad: false, rows: [{ p: '', k: '' }, { p: '', k: '' }, { p: '', k: '' }, { p: '', k: '' }], report: null, show: false };
 const getPref = (k, d) => { try { const v = localStorage.getItem(KEY + ':' + k); return v === null ? d : v === '1'; } catch (e) { return d; } };
 const setPref = (k, v) => { try { localStorage.setItem(KEY + ':' + k, v ? '1' : '0'); } catch (e) {} };
@@ -161,6 +161,7 @@ function recentGames() { return recentIds().map(readGame).filter(Boolean); }
 function tipOnce(name, msg) { if (LS.get('tip-' + name)) return ''; LS.set('tip-' + name, '1'); return msg; }
 const newcomer = () => !recentGames().some(g => g.rows && g.rows.length);
 const FIRST_PUZZLE = (BANKMETA.find(g => g.n === 4 && g.single && !g.overlap && g.solutions === 1) || BANKMETA[0]).code;
+function continueGame() { if (S && P && !S.won) return S; return recentGames().find(s => !s.won && s.rows && s.rows.length) || null; }
 function findGame(gid) { return recentGames().find(s => s.gid === gid) || null; }
 function save() {
   const id = gameId(S), was = LS.get('last'); let ids = recentIds().filter(x => x !== id);
@@ -296,7 +297,7 @@ function solverPanel(sol) {
   let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Most codes still possible after each turn"><polyline class="ln" points="' + st.map((g, i) => x(i).toFixed(1) + ',' + y(g.after).toFixed(1)).join(' ') + '"/>';
   st.forEach((g, i) => { svg += '<g class="pt' + (i === cur ? ' on' : '') + '" data-act="sp-go" data-i="' + i + '"><rect x="' + (x(i) - 30).toFixed(1) + '" y="0" width="60" height="' + H + '" fill="transparent"/><circle cx="' + x(i).toFixed(1) + '" cy="' + y(g.after).toFixed(1) + '" r="' + (i === cur ? 4 : 2.5) + '"/><text class="v" x="' + x(i).toFixed(1) + '" y="' + (y(g.after) - 8).toFixed(1) + '">' + g.after + '</text><text class="t" x="' + x(i).toFixed(1) + '" y="94">' + esc(g.top) + '</text><text class="t" x="' + x(i).toFixed(1) + '" y="108">' + esc(g.bot) + '</text></g>'; });
   svg += '</svg>';
-  let ws = '<div class="spgrid">' + DIG.map(d => '<i class="h">' + d + '</i>').join('');
+  let ws = '<div class="spgrid">' + DIG.map(d => '<i class="h">' + d + '</i>').join('');   // same look as the player's worksheet: a white key is still possible, bare and struck is ruled out, blue strike is ruled out at this step, bold is the only one left
   for (let v = 1; v <= 5; v++) for (let d = 0; d < 3; d++) ws += '<i class="' + (s.dom[d].includes(v) ? '' : 'off') + (s.d.includes(d + ':' + v) ? ' new' : '') + '"><span class="sr">' + DIG[d] + ' </span>' + v + (s.dom[d].includes(v) ? '' : '<span class="sr">' + (s.d.includes(d + ':' + v) ? ' (ruled out at this step)' : ' (ruled out)') + '</span>') + '</i>';
   ws += '</div><div class="spopts">' + P.preds.map((p, i) => '<div><b class="letter">' + LET[i] + '</b>' + p.options.map((o, k) => '<span class="' + (s.opts[i].includes(k) ? (s.opts[i].length === 1 ? 'only' : '') : 'off') + (s.o.includes(i + ':' + k) ? ' new' : '') + '">' + esc(o.l) + (s.opts[i].includes(k) ? (s.opts[i].length === 1 ? '<span class="sr"> (the only one left)</span>' : '') : '<span class="sr">' + (s.o.includes(i + ':' + k) ? ' (ruled out at this step)' : ' (ruled out)') + '</span>') + '</span>').join('') + '</div>').join('') + '</div>';
   return '<div class="sp"><div class="spchart">' + svg + '</div><div class="spside"><div class="spnav"><button class="ghost" data-act="sp-prev" data-fk="spprev"' + (cur === 0 ? ' disabled' : '') + ' aria-label="previous step">‹ Back</button><span>' + (cur === 0 ? 'Start' : 'Step ' + cur + ' of ' + (n - 1)) + '</span><button class="ghost" data-act="sp-next" data-fk="spnext"' + (cur === n - 1 ? ' disabled' : '') + ' aria-label="next step">Next ›</button></div>'
@@ -467,7 +468,7 @@ function optsHtml() {
     + '<div class="theme" role="group" aria-label="Colour theme"><span>Theme</span>' + THEMES.map(x => '<button class="ghost" data-act="theme" data-v="' + x[0] + '" aria-pressed="' + (THEME === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>';
 }
 const canPlay = () => !!(form.report && form.report.pz && form.report.pz.solutions > 0);
-function playWord() { const s = canPlay() && findGame(form.report.pz.gid); return s && !s.won ? 'Resume' : 'Play'; }
+function playWord() { return 'Play'; }   // Resume lives only in the Continue row; Play on a puzzle you are partway through still picks up where you left off
 function setReport() {
   const a = document.getElementById('report'), b = document.getElementById('report2'), p = document.getElementById('codeplay');
   if (a) a.innerHTML = reportHtml(false); if (b) b.innerHTML = reportHtml(true); if (p) { p.disabled = !canPlay(); p.textContent = playWord(); }
@@ -502,11 +503,16 @@ function bankHtml() {
 
 function modesWord() { const on = MODES.filter(m => MODE[m[0]]).length; return 'Game modes (' + (on === 3 ? 'all three on' : on + ' of 3 on') + ')'; }
 function renderSetup() {
-  let h = '<header class="top"><h1>' + TITLE + '</h1><div class="tools">' + (S && P ? '<button class="ghost" data-act="back">Back to game</button>' : '') + '</div></header>';
+  let h = '<header class="top"><h1>' + TITLE + '</h1></header>';
   if (askInstall()) h += '<div class="install"><span>Add ' + TITLE + ' to your home screen? It opens like an app and works offline.</span><button class="primary" data-act="inst-yes" data-fk="instyes">Yes</button><button class="ghost" data-act="inst-no" data-fk="instno">No</button></div>';
+  const cont = continueGame();
+  if (cont) {   // the one place to resume: the game open now, or else the newest unfinished one
+    const d = new Date(cont.startedAt), day = isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    h += '<section class="setup"><div class="lbl">Continue</div><div class="start recent"><div class="recinfo"><span class="code">' + esc(cont.gid) + '</span><span>' + esc((cont.gotd ? 'Game of the day ' + cont.gotd : day) + ' \u00b7 turn ' + (cont.turns + 1)) + '</span></div><button class="primary" data-act="recent" data-id="' + esc(gameId(cont)) + '" data-fk="cont">Resume</button></div></section>';
+  }
   if (newcomer()) {
     const seen = !!LS.get('tut-seen');
-    h += '<section class="setup"><div class="lbl">New here?</div><p class="newbie">How to play takes about three minutes. Then try a small first puzzle with four cards.' + (STANDALONE && IOS ? ' Moved from Safari? Bring your games with \u201cPaste a table or your saved games\u201d below.' : '') + '</p>';
+    h += '<section class="setup"><div class="lbl">New here?</div><p class="newbie">How to play takes about three minutes. Then try a small first puzzle with four cards.' + (STANDALONE && IOS ? ' Moved from Safari? Bring your games with \u201cPaste a table or saved games\u201d below.' : '') + '</p>';
     h += '<div class="start"><button class="' + (seen ? 'ghost' : 'primary') + ' big" data-act="tutorial" data-fk="tut">How to play</button></div>';
     h += '<div class="lbl">First puzzle</div><div class="start"><span class="firstp">Four cards, one solution</span><button class="primary" data-act="first-play" data-fk="firstp">Play</button></div>';
   } else h += '<section class="setup"><div><button class="ghost big" data-act="tutorial" data-fk="tut">How to play</button></div>';
@@ -517,16 +523,17 @@ function renderSetup() {
     h += '<div class="opts">' + MODES.map(m => '<label class="opt"><input type="checkbox" id="mode-' + m[0] + '"' + (MODE[m[0]] ? ' checked' : '') + '><span><b>' + m[1] + '</b> <span id="modetxt-' + m[0] + '">' + (MODE[m[0]] ? m[3] : m[4]) + m[2] + '</span></span></label>').join('') + '</div>';
     h += '<p class="hint">A ticked mode is guaranteed; an unticked one is left to chance. The modes also decide which game of the day you get, which starter puzzles the list shows, and what the New buttons make.</p>';
   }
-  h += '<div class="lbl">Game code</div><div class="start"><input id="code" aria-label="Game code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="a code, or a friend’s summary" value="' + esc(form.code) + '"><button class="primary" id="codeplay" data-act="play"' + (canPlay() ? '' : ' disabled') + '>' + playWord() + '</button><select id="bank" aria-label="Game list">' + bankHtml() + '</select></div>';
+  h += '<div class="lbl">Game code</div><div class="start"><input id="code" aria-label="Game code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="a code, or a friend’s summary" value="' + esc(form.code) + '"><button class="primary" id="codeplay" data-act="play"' + (canPlay() ? '' : ' disabled') + '>' + playWord() + '</button></div>';
+  h += '<div class="lbl">Game list <span class="note">fills in the code above</span></div><div class="start"><select id="bank" aria-label="Game list">' + bankHtml() + '</select></div>';
   h += '<span class="res' + (form.codeBad ? ' bad' : '') + '" id="codemsg">' + (form.codeBad ? esc(codeProblem(form.code)) : '') + '</span><div id="report">' + reportHtml(false) + '</div>';
-  const rec = recentGames();
+  const rec = recentGames().filter(s => !cont || gameId(s) !== gameId(cont));
   let recH = '';   // recent games go last, below Aids, so the rows that start a game stay together
   if (rec.length) recH = '<div class="lbl">Recent games <span class="note">only the last ' + RECENT_MAX + ' are kept</span></div>' + rec.map(s => {
     const d = new Date(s.startedAt), day = isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     const what = s.won ? 'won in ' + plural(s.turns, 'turn') : 'turn ' + (s.turns + 1) + ', in progress';
     return '<div class="start recent"><div class="recinfo"><span class="code">' + esc(s.gid) + '</span><span>' + esc((s.gotd ? 'Game of the day ' + s.gotd : day) + ' \u00b7 ' + what) + '</span></div><button class="' + (s.won ? 'ghost' : 'primary') + '" data-act="recent" data-id="' + esc(gameId(s)) + '">' + (s.won ? 'Review' : 'Resume') + '</button></div>';
   }).join('');
-  h += '<div class="lbl">Exported table</div><div class="start"><button class="foldsel" data-act="import" data-fk="import">' + (STANDALONE ? 'Paste a table or your saved games' : 'Paste a table to continue or review it') + '</button></div>';
+  h += '<div class="lbl">Continue or review a game</div><div class="start"><button class="foldsel" data-act="import" data-fk="import">' + (STANDALONE ? 'Paste a table or saved games' : 'Paste its exported table') + '</button></div>';
   h += '<div class="lbl">Build a puzzle</div><div class="start"><button class="foldsel" data-act="fold" data-f="fbuild" aria-expanded="' + !!form.fbuild + '">' + (form.fbuild ? '\u25be ' : '\u25b8 ') + 'Predicates and checkers</button></div>';
   if (form.fbuild) {
     h += '<div id="rows">' + rowsHtml() + '</div>';
@@ -552,10 +559,12 @@ function renderPlay() {
   const n = P.preds.length, kn = known(S.dial), eff = effTicks();
   const echo = new Set(Object.keys(kn).map(i => kn[i].row + ':' + i)), contra = new Set(S.contra);
   const canEval = !S.won && eff.length >= 1 && eff.length <= 3, canKnow = !S.won && eff.length === 0;
-  let h = '<header class="top"><h1>' + TITLE + '</h1><div class="tools"><button class="ghost" data-act="tutorial" data-fk="tut">How to play</button>' + (S.won ? '' : '<button class="ghost" data-act="hint" data-fk="hint">' + (ui.hint ? 'Hide hint' : 'Hint') + '</button>') + '<button class="ghost" data-act="export" data-fk="export">Export</button><button class="ghost" data-act="restart" data-fk="restart">Restart</button><button class="ghost" data-act="setup" data-fk="setup">New puzzle</button></div>';
+  let h = '<header class="top"><h1>' + TITLE + '</h1><div class="tools"><button class="ghost" data-act="tutorial" data-fk="tut">How to play</button>' + (S.won ? '' : '<button class="ghost" data-act="hint" data-fk="hint">' + (ui.hint ? 'Hide hint' : 'Hint') + '</button>')
+    + '<div class="menuwrap"><button class="ghost more" data-act="menu" data-fk="menu" aria-haspopup="true" aria-expanded="' + !!ui.menu + '" aria-label="More: export, ' + (S.won ? '' : 'restart, ') + 'new puzzle">\u22ef</button>'
+    + (ui.menu ? '<div class="menu" role="menu"><button role="menuitem" data-act="export" data-fk="export">Export table</button>' + (S.won ? '' : '<button role="menuitem" data-act="restart" data-fk="restart">Restart this puzzle</button>') + '<button role="menuitem" data-act="setup" data-fk="setup">New puzzle</button></div>' : '') + '</div></div>';
   h += '<div class="meta"><span><span class="lbl">Game</span> <b>' + P.gid + '</b></span>' + (S.gotd ? '<span><span class="lbl">Game of the day</span> <b>' + esc(S.gotd) + '</b></span>' : '') + '<span><span class="lbl">' + (S.won ? 'Turns</span> <b>' + S.turns : 'Turn</span> <b>' + (S.turns + 1)) + '</b></span><span><span class="lbl">Evaluations</span> <b>' + S.evals + '</b></span>' + (S.rival ? '<span class="rival"><span class="lbl">Friend</span> <b>' + rivalWord(S.rival) + '</b></span>' : '') + '</div></header>';
   h += '<section class="facts"><div class="lbl">Puzzle facts</div><p>' + (P.solutions === 1 ? 'One solution' : S.showCount ? P.solutions + ' solutions' : 'More than one solution') + '</p><p>' + (P.singleOption ? 'One secret option per predicate' : 'Some predicates have more than one secret option') + '</p><p>' + (P.overlap ? 'The answer fits more than one listed option on at least one predicate' : 'The answer fits exactly one listed option on every predicate') + '</p></section>';
-  h += '<section class="board" style="--n:' + n + '" aria-label="Truth table"><div class="lbl">Truth table</div><div class="row head" aria-hidden="true">' + DIG.map(d => '<span class="c">' + d + '</span>').join('') + LET.slice(0, n).map(l => '<span class="c">' + l + '</span>').join('') + '<span class="c"></span></div>';
+  h += '<section class="board" style="--n:' + n + '" aria-label="Truth table"><div class="lbl">Truth table</div><div class="row head" aria-hidden="true">' + DIG.map(d => '<span class="c">' + d + '</span>').join('') + LET.slice(0, n).map((l, i) => '<span class="c"><button class="jump" data-act="tocard" data-i="' + i + '" id="col' + i + '" tabindex="-1">' + l + '</button></span>').join('') + '<span class="c"></span></div>';
   S.rows.forEach((r, ri) => {
     const said = P.preds.map((p, i) => LET[i] + (i in r.res ? (r.res[i] ? ' true' : ' false') + (contra.has(ri + ':' + i) ? ' (rules out your guess)' : '') : ' not tested')).join(', ');
     h += '<div class="row hist' + (r.guess ? ' guess' : '') + '" role="group" aria-label="' + (r.guess ? 'Guess ' : 'Code ') + cs(r.code) + ': ' + said + '">';
@@ -584,28 +593,38 @@ function renderPlay() {
   }
   h += '</section>' + (S.won ? '' : '<p class="status slot' + (ui.bad ? ' bad' : '') + '">' + esc(ui.msg) + '</p>');
 
-  if (!S.won && ui.hint) { const sol = solverRun(S.rows); h += '<section class="end"><h2>What your answers show so far</h2>' + solverPanel(sol) + '<p class="hint">This worksheet is filled in from the answers in your table and nothing else: an option is crossed out when an answer contradicts it, and a digit value when no remaining option allows it. Marks ringed in blue are new at that step.</p></section>'; }
+  if (!S.won && ui.hint) { const sol = solverRun(S.rows); h += '<section class="end"><h2>What your answers show so far</h2>' + solverPanel(sol) + '<p class="hint">This worksheet is filled in from the answers in your table and nothing else: an option is crossed out when an answer contradicts it, and a digit value when no remaining option allows it. Crossings in blue are new at that step; bold marks the only option left.</p></section>'; }
   if (S.won) {
     const win = S.rows[S.rows.length - 1], v = verdict();
     h += '<section class="end"><h2>' + cs(win.code) + ' is the code.</h2><dl class="stats"><div><dt>Turns</dt><dd>' + S.turns + '</dd></div><div><dt>Evaluations</dt><dd>' + S.evals + '</dd></div><div><dt>Wrong guesses</dt><dd>' + S.wrong + '</dd></div><div><dt>Time</dt><dd>' + (S.imported ? '—' : fmtDur(S.finishedAt - S.startedAt)) + '</dd></div></dl>';
     if (S.rival) { const d = rivalDiff(); h += '<p class="verdict">' + (d < 0 ? 'You beat your friend' : d > 0 ? 'Your friend beat you' : 'You tied with your friend') + ': they took ' + rivalWord(S.rival) + '.</p>'; }
     h += '<p class="verdict">' + esc(v.text) + '</p>';
-    h += solverPanel(v.sol);
-    h += '<p class="hint">The line shows the most codes still possible after each turn by crossing out on the worksheet alone: the remaining values for x, y and z multiplied together. Tap a point, or use Back and Next, to see that worksheet at that moment and why it changed. Marks ringed in blue are new at that step. Checking every code against your evaluations and the start-screen facts, ' + plural(v.exact, 'code') + ' remained possible when you guessed.</p>';
-    h += '<pre class="out">' + esc(shareText(v)) + '</pre><div class="endb"><button class="primary" data-act="copyshare" data-fk="copyshare">Copy summary</button><button class="ghost" data-act="export" data-fk="export2">Export table (spoiler)</button><button class="ghost" data-act="again" data-fk="again">Play again</button><button class="ghost" data-act="setup" data-fk="setup2">New puzzle</button></div></section>';
+    h += '<div class="lbl">Summary to share</div><pre class="out">' + esc(shareText(v)) + '</pre>';
+    h += '<div class="endb"><button class="primary" data-act="copyshare" data-fk="copyshare">Copy summary</button><button class="ghost" data-act="again" data-fk="again">Play again</button><button class="ghost" data-act="setup" data-fk="setup2">New puzzle</button><button class="ghost" data-act="export" data-fk="export2">Export table (spoiler)</button></div>';
+    h += '<h2 class="sub">How the worksheet saw it</h2>' + solverPanel(v.sol);
+    h += '<p class="hint">The line shows the most codes still possible after each turn by crossing out on the worksheet alone: the remaining values for x, y and z multiplied together. Tap a point, or use Back and Next, to see that worksheet at that moment and why it changed. Crossings in blue are new at that step; bold marks the only option left. Checking every code against your evaluations and the start-screen facts, ' + plural(v.exact, 'code') + ' remained possible when you guessed.</p></section>';
   }
 
+  if (!S.won) {
   h += '<section class="zone ws"><div class="lbl">Worksheet <span class="note">tap to cross out, hold to circle' + (WORK ? '; a circle crosses out the rest of its column' + (P.singleOption ? ' or card' : '') : '') + '</span></div><div class="sheet"><div class="digits" role="group" aria-label="Digit worksheet">' + DIG.map(d => '<span class="dh">' + d + '</span>').join('');
   for (let v = 1; v <= 5; v++) for (let d = 0; d < 3; d++) h += '<button class="mark m' + markD(d, v - 1) + '" data-mark="d:' + d + ':' + (v - 1) + '" data-fk="md' + d + v + '" aria-label="' + DIG[d] + ' ' + v + STATE_WORD[markD(d, v - 1)] + '">' + v + '</button>';
   h += '</div><div class="cards">';
   P.preds.forEach((p, i) => {
-    h += '<article class="card"><h3><span class="letter">' + LET[i] + '</span><span>' + esc(p.text) + '</span></h3><div class="chips">';
+    h += '<article class="card" id="card' + i + '"><h3><button class="letter jump" data-act="tocol" data-i="' + i + '" tabindex="-1" aria-hidden="true">' + LET[i] + '</button><span>' + esc(p.text) + '</span></h3><div class="chips">';
     p.options.forEach((o, k) => { h += '<button class="chip mark m' + markO(i, k) + (determined(i, k) ? ' match' : '') + '" data-mark="o:' + i + ':' + k + '" data-fk="mo' + i + '_' + k + '" aria-label="' + LET[i] + ': ' + esc(o.l) + STATE_WORD[markO(i, k)] + '">' + esc(o.l) + '</button>'; });
     h += '</div></article>';
   });
   h += '</div></div></section><div class="lbl">Aids</div>' + optsHtml();
+  }
   app.innerHTML = h;
   if (fk) { const el = app.querySelector('[data-fk="' + fk + '"]'); if (el && !el.disabled) el.focus({ preventScroll: true }); }
+}
+function jumpTo(kind, i) {   // a quiet shortcut: a column letter scrolls to its card, a card letter back to its column
+  const el = document.getElementById((kind === 'tocard' ? 'card' : 'col') + i); if (!el) return;
+  const still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  el.scrollIntoView({ block: kind === 'tocard' ? 'center' : 'start', behavior: still ? 'auto' : 'smooth' });
+  if (kind === 'tocol') window.scrollBy(0, -60);
+  const fl = kind === 'tocard' ? el : el.parentNode; fl.classList.remove('flash'); void fl.offsetWidth; fl.classList.add('flash');
 }
 function render() { if (view === 'play' && P && S) renderPlay(); else renderSetup(); }
 
@@ -623,7 +642,7 @@ const TUTORIAL = '<h2>How to play</h2>'
   + '<p><b>Building a puzzle.</b> Under \u201cBuild a puzzle\u201d each line is one card: a predicate number and the checker number of its secret option. \u201cNew predicates\u201d swaps the cards and keeps nothing else; \u201cNew secret options\u201d keeps the cards and picks new secret options. Both follow the game modes. Typing two checker numbers on one line gives that card two secret options.</p>'
   + '<p><b>Hints and the review.</b> Hint shows a worksheet filled in from your answers so far, with the reason for each mark. It uses two rules: cross out an option that an answer contradicts, and cross out a digit value when some card has no remaining option that allows it. Your summary will then say \u201cHint used\u201d. After a game you can step through the same worksheet turn by turn.</p>'
   + '<p><b>Playing a friend\u2019s game.</b> Paste their summary into the Game code box. You get the same puzzle, and their score stays on screen to beat. Your own summary then says how you compared.</p>'
-  + '<p><b>Passing a game on.</b> “Export table” works at any point in a game. “Import a table” on the New puzzle screen loads one: an unfinished table continues from its last row, a finished one opens on its analysis. Worksheet marks do not travel, and an imported game says “Imported table” in its summary. The New puzzle screen lists your last ' + RECENT_MAX + ' games under Recent games; older ones are deleted, so export any game you want to keep.</p>';
+  + '<p><b>Passing a game on.</b> “Export table” works at any point in a game. “Continue or review a game” on the New puzzle screen loads one: an unfinished table continues from its last row, a finished one opens on its analysis. Worksheet marks do not travel, and an imported game says “Imported table” in its summary. The New puzzle screen lists your last ' + RECENT_MAX + ' games under Recent games; older ones are deleted, so export any game you want to keep.</p>';
 let opener = null;   // data-fk of the control that opened the dialog, so focus can go back to it
 function closeModal() {
   modal.hidden = true; modal.innerHTML = ''; modal.onclick = null;
@@ -710,11 +729,15 @@ function toggleMark(key, s) {
 function step(d, dir) { if (S.won) return; S.dial[d] = ((S.dial[d] - 1 + dir + 5) % 5) + 1; save(); render(); }
 
 app.addEventListener('click', async e => {
-  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const b = e.target.closest('[data-act]');
+  if (ui.menu && (!b || b.dataset.act !== 'menu')) { ui.menu = false; if (!b || b.disabled) { render(); return; } }
+  if (!b || b.disabled) return;
   if (b.dataset.fk) opener = b.dataset.fk;
   const a = b.dataset.act;
   if (a === 'inc' || a === 'dec') step(+b.dataset.d, a === 'inc' ? 1 : -1);
   else if (a === 'tick') { const i = +b.dataset.i, at = S.ticks.indexOf(i); if (at >= 0) S.ticks.splice(at, 1); else if (effTicks().length >= 3) say('Three predicates at most per turn.', true); else { S.ticks.push(i); const m = tipOnce('tick', 'Tip: tick up to three cards to test on the code above. Together they cost one turn; each tick is one evaluation.'); if (m) say(m); else if (ui.bad) say(''); } save(); render(); }
+  else if (a === 'menu') { ui.menu = !ui.menu; render(); if (ui.menu) { const f = app.querySelector('.menu button'); if (f) f.focus(); } }
+  else if (a === 'tocard' || a === 'tocol') jumpTo(a, +b.dataset.i);
   else if (a === 'eval') doEvaluate();
   else if (a === 'know') doKnow();
   else if (a === 'tutorial') showTutorial();
@@ -727,14 +750,13 @@ app.addEventListener('click', async e => {
     const n = solverRun(S.won ? S.rows.slice(0, -1) : S.rows).steps.length, cur = ui.step === null ? n - 1 : ui.step;
     ui.step = Math.max(0, Math.min(n - 1, a === 'sp-go' ? +b.dataset.i : cur + (a === 'sp-next' ? 1 : -1))); render();
   }
-  else if (a === 'export') showText('Truth table' + (S.won ? '' : ' so far') + '. Spoiler: it contains every code you tried. Anyone can load it with “Import a table” on the New puzzle screen. Settings line: ' + SETTINGS_KEY, exportText());
+  else if (a === 'export') { render(); showText('Truth table' + (S.won ? '' : ' so far') + '. Spoiler: it contains every code you tried. Anyone can load it with \u201cContinue or review a game\u201d on the New puzzle screen. Settings line: ' + SETTINGS_KEY, exportText()); }
   else if (a === 'import') showImport();
   else if (a === 'recent') { const s = readGame(b.dataset.id); if (s && resume(s)) { ui.step = null; ui.hint = false; LS.set('last', gameId(s)); } render(); }
   else if (a === 'copyshare') { const note = { set textContent(v) { say(v === 'Copied.' ? 'Summary copied.' : 'Copying is blocked here. Select the summary text and copy it by hand.'); render(); } }; copy(shareText(verdict()), note, null); }
-  else if (a === 'restart') { if (await ask('Restart this puzzle? Your table and marks will be cleared.', 'Restart')) startGame(P, S.showCount, true, S.gotd); }
+  else if (a === 'restart') { render(); if (await ask('Restart this puzzle? Your table and marks will be cleared.', 'Restart')) startGame(P, S.showCount, true, S.gotd); }
   else if (a === 'again') startGame(P, S.showCount, true, S.gotd);
   else if (a === 'setup') { view = 'setup'; render(); }
-  else if (a === 'back') { view = 'play'; render(); }
   else if (a === 'add') { if (form.rows.length < 8) form.rows.push({ p: '', k: '' }); form.report = null; form.code = ''; render(); }
   else if (a === 'rm') { form.rows.splice(+b.dataset.i, 1); form.report = null; const pz = formPuzzle(); form.code = pz ? pz.gid : ''; render(); }
   else if (a === 'check') { form.show = false; checkForm(); setReport(); }
@@ -801,6 +823,7 @@ app.addEventListener('change', e => {
   else if (id === 'code' && form.report && form.report.pz) { e.target.value = form.code; }
 });
 app.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && ui.menu) { ui.menu = false; render(); const m = app.querySelector('[data-act="menu"]'); if (m) m.focus(); return; }
   const mk = e.target.closest('[data-mark]');
   if (mk && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleMark(mk.dataset.mark, e.shiftKey ? 2 : 1); }
   else if (e.key === 'Enter' && e.target.dataset && e.target.dataset.row !== undefined) { form.show = false; checkForm(); setReport(); }
@@ -857,7 +880,7 @@ function showInstall() {
   if (IOS) {
     body += '<ol><li>In Safari, tap <b>Share</b> (the square with an arrow). On recent iPhones it may be inside the <b>\u2022\u2022\u2022</b> menu.</li><li>Choose <b>Add to Home Screen</b>. You may need to scroll down, or tap <b>More</b>.</li><li>Tap <b>Add</b>.</li></ol>'
       + '<p>The home-screen copy opens like an app, works offline, and its saved games are safe from Safari\u2019s seven-day clean-up.</p>'
-      + '<p>It starts without your saved games: iPhone keeps them apart from Safari.' + (games ? ' To bring yours along, tap <b>Copy my games</b> now. In the new copy, tap <b>Paste a table or your saved games</b> and paste.' : '') + '</p>';
+      + '<p>It starts without your saved games: iPhone keeps them apart from Safari.' + (games ? ' To bring yours along, tap <b>Copy my games</b> now. In the new copy, tap <b>Paste a table or saved games</b> and paste.' : '') + '</p>';
   } else {
     body += installEvent ? '<p>Tap <b>Install</b> below, then confirm.</p>' : '<ol><li>Open your browser\u2019s menu (<b>\u22ee</b>).</li><li>Choose <b>Install app</b> or <b>Add to Home screen</b>.</li><li>Confirm.</li></ol>';
     body += '<p>It opens like an app and works offline. In Chrome, your saved games come along.</p>';

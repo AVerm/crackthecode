@@ -298,3 +298,36 @@ pre.out{margin:0;font-family:var(--math);font-size:15px;white-space:pre-wrap;ove
 .tutbody li{margin:4px 0}
 .fine{margin-top:28px;font-size:12px}
 .quiet{background:none;border:none;padding:0;color:var(--muted);font:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+
+/* header: How to play, Hint and a menu for the rest */
+.menuwrap{position:relative}
+.ghost.more{min-width:44px;font-size:18px;line-height:1;letter-spacing:.05em}
+.menu{position:absolute;right:0;top:calc(100% + 4px);z-index:20;display:flex;flex-direction:column;min-width:190px;background:var(--paper);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.18),0 0 0 1px var(--faint);padding:6px}
+.menu button{font:inherit;font-size:15px;text-align:left;background:none;border:none;color:var(--ink);padding:0 12px;min-height:44px;border-radius:6px}
+.menu button:hover,.menu button:focus-visible{background:var(--zone)}
+.tools{flex-wrap:nowrap}
+/* table letters and card letters jump to each other */
+button.jump{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;min-width:28px;min-height:32px}
+.card h3 button.letter{min-width:24px;min-height:28px;text-align:left}
+@media (prefers-reduced-motion:no-preference){ .flash{animation:flash 1.1s ease-out} }
+@media (prefers-reduced-motion:reduce){ .flash{outline:2px solid var(--accent);outline-offset:2px} }
+@keyframes flash{0%{background:var(--hl);box-shadow:0 0 0 4px var(--hl)}100%{background:transparent;box-shadow:0 0 0 4px transparent}}
+.c.flash{border-radius:6px}
+.card.flash{border-radius:8px}
+/* review worksheet in the player's own look: white key = still possible; bare and struck = ruled out; blue strike = ruled out at this step; bold = only one left */
+.sp .spws{background:var(--zone);border-radius:10px;padding:8px;gap:12px}
+.sp .spgrid{grid-template-columns:repeat(3,26px);gap:3px;line-height:26px;font-size:15px}
+.sp .spgrid i:not(.h){background:var(--paper);border-radius:50%;position:relative;color:var(--ink)}
+.sp .spopts{gap:4px;font-size:13.5px}
+.sp .spopts>div{display:flex;flex-wrap:wrap;align-items:center;gap:3px}
+.sp .spopts span:not(.sr){background:var(--paper);border-radius:999px;padding:1px 8px;margin:0;position:relative;color:var(--ink)}
+.sp .spgrid .off,.sp .spopts span.off{background:transparent!important;color:var(--gone);text-decoration:none}
+.sp .spgrid .off::after,.sp .spopts span.off::after{content:"";position:absolute;left:4px;right:4px;top:50%;border-top:1.5px solid var(--gone)}
+.sp .spgrid .off.new,.sp .spopts span.off.new{color:var(--accent)}
+.sp .spgrid .off.new::after,.sp .spopts span.off.new::after{border-top:2px solid var(--accent)}
+.sp .spgrid .new,.sp .spopts .new{box-shadow:none}
+.sp .spopts span.only{font-weight:700}
+/* end screen: the summary reads as the thing you will paste */
+.end h2.sub{font-size:19px;margin-top:10px}
+.end pre.out{background:var(--zone);border-radius:8px;padding:10px 12px;margin-top:-4px}
+.card h3 button.letter.jump{font-family:var(--math);font-style:italic;font-weight:600;font-size:19px}
