@@ -356,10 +356,10 @@ button.jump{font:inherit;color:inherit;background:none;border:none;padding:0;cur
 
 /* review chart: a line that stretches across the column, with points and labels as ordinary text at their own size */
 .spchart{flex:1 1 100%;overflow-x:auto}
-.spc{position:relative;height:145px}
+.spc{position:relative;height:150px}
 .spc svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .spc .ln{fill:none;stroke:var(--ink);stroke-width:1.2}
-.spc .slot{position:absolute;top:0;height:145px;cursor:pointer}
+.spc .slot{position:absolute;top:0;height:150px;cursor:pointer}
 .spc .slot>span{position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;font-family:var(--math);color:var(--muted);line-height:1}
 .spc .dot{width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--ink)}
 .spc .on .dot{width:9px;height:9px;margin-top:-4.5px;background:var(--accent)}
@@ -368,6 +368,8 @@ button.jump{font:inherit;color:inherit;background:none;border:none;padding:0;cur
 .spc .on .v,.spc .on .t{color:var(--accent)!important}
 .sp{min-width:0;max-width:100%}
 .sp>.spchart{min-width:0;width:100%;max-width:100%}
+.spc .vc{font-size:10.5px}
+.spc .on .vc{color:var(--accent)!important}
 
 .nf{max-width:34rem;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:14px}
 .nf h1{font-family:var(--math);font-style:italic;font-weight:600;font-size:26px;letter-spacing:.01em;margin:0}
