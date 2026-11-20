@@ -293,10 +293,13 @@ function solverRun(rows) {
 // chart of the solver's count, its worksheet at one step, and why it changed
 function solverPanel(sol) {
   const st = sol.steps, n = st.length, cur = Math.max(0, Math.min(n - 1, ui.step === null ? n - 1 : ui.step)), s = st[cur];
-  const W = Math.max(250, n * 62), H = 116, x = i => n === 1 ? W / 2 : 30 + i * (W - 60) / (n - 1), y = v => 22 + (1 - v / 125) * 50;
-  let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Most codes still possible after each turn"><polyline class="ln" points="' + st.map((g, i) => x(i).toFixed(1) + ',' + y(g.after).toFixed(1)).join(' ') + '"/>';
-  st.forEach((g, i) => { svg += '<g class="pt' + (i === cur ? ' on' : '') + '" data-act="sp-go" data-i="' + i + '"><rect x="' + (x(i) - 30).toFixed(1) + '" y="0" width="60" height="' + H + '" fill="transparent"/><circle cx="' + x(i).toFixed(1) + '" cy="' + y(g.after).toFixed(1) + '" r="' + (i === cur ? 4 : 2.5) + '"/><text class="v" x="' + x(i).toFixed(1) + '" y="' + (y(g.after) - 8).toFixed(1) + '">' + g.after + '</text><text class="t" x="' + x(i).toFixed(1) + '" y="94">' + esc(g.top) + '</text><text class="t" x="' + x(i).toFixed(1) + '" y="108">' + esc(g.bot) + '</text></g>'; });
-  svg += '</svg>';
+  // the chart fills its column: points sit at the middle of equal slots, each slot between 75 and 110 px wide, so the line
+  // stretches with the width while the text stays its own size; below 75 px a slot the chart scrolls sideways
+  const H = 116, y = v => 22 + (1 - v / 125) * 50, X = i => (i + 0.5) * 1000 / n;
+  let svg = '<div class="spc" style="width:min(100%,' + n * 110 + 'px);min-width:' + n * 75 + 'px" role="img" aria-label="Most codes still possible after each turn: ' + st.map(g => g.after).join(', ') + '">'
+    + '<svg viewBox="0 0 1000 ' + H + '" preserveAspectRatio="none" aria-hidden="true"><polyline class="ln" vector-effect="non-scaling-stroke" points="' + st.map((g, i) => X(i).toFixed(1) + ',' + y(g.after).toFixed(1)).join(' ') + '"/></svg>';
+  st.forEach((g, i) => { svg += '<div class="slot' + (i === cur ? ' on' : '') + '" data-act="sp-go" data-i="' + i + '" style="left:' + (i * 100 / n).toFixed(3) + '%;width:' + (100 / n).toFixed(3) + '%" aria-hidden="true"><span class="dot" style="top:' + y(g.after).toFixed(1) + 'px"></span><span class="v" style="top:' + (y(g.after) - 21).toFixed(1) + 'px">' + g.after + '</span><span class="t" style="top:84px">' + esc(g.top) + '</span><span class="t" style="top:98px">' + esc(g.bot) + '</span></div>'; });
+  svg += '</div>';
   let ws = '<div class="spgrid">' + DIG.map(d => '<i class="h">' + d + '</i>').join('');   // same look as the player's worksheet: a white key is still possible, bare and struck is ruled out, blue strike is ruled out at this step, bold is the only one left
   for (let v = 1; v <= 5; v++) for (let d = 0; d < 3; d++) ws += '<i class="' + (s.dom[d].includes(v) ? '' : 'off') + (s.d.includes(d + ':' + v) ? ' new' : '') + '"><span class="sr">' + DIG[d] + ' </span>' + v + (s.dom[d].includes(v) ? '' : '<span class="sr">' + (s.d.includes(d + ':' + v) ? ' (ruled out at this step)' : ' (ruled out)') + '</span>') + '</i>';
   ws += '</div><div class="spopts">' + P.preds.map((p, i) => '<div><b class="letter">' + LET[i] + '</b><div class="spchips">' + p.options.map((o, k) => '<span class="' + (s.opts[i].includes(k) ? (s.opts[i].length === 1 ? 'only' : '') : 'off') + (s.o.includes(i + ':' + k) ? ' new' : '') + '">' + esc(o.l) + (s.opts[i].includes(k) ? (s.opts[i].length === 1 ? '<span class="sr"> (the only one left)</span>' : '') : '<span class="sr">' + (s.o.includes(i + ':' + k) ? ' (ruled out at this step)' : ' (ruled out)') + '</span>') + '</span>').join('') + '</div></div>').join('') + '</div>';
@@ -624,6 +627,7 @@ function renderPlay() {
   }
   app.innerHTML = h;
   if (fk) { const el = app.querySelector('[data-fk="' + fk + '"]'); if (el && !el.disabled) el.focus({ preventScroll: true }); }
+  { const on = app.querySelector('.spc .slot.on'), box = on && on.closest('.spchart'); if (box && box.scrollWidth > box.clientWidth) box.scrollLeft = Math.max(0, on.offsetLeft + on.offsetWidth / 2 - box.clientWidth / 2); }   // keep the chosen step in view when the chart scrolls
 }
 function jumpTo(kind, i) {   // a quiet shortcut: a column letter scrolls to its card, a card letter back to its column
   const el = document.getElementById((kind === 'tocard' ? 'card' : 'col') + i); if (!el) return;
