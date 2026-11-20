@@ -468,8 +468,9 @@ const MODES = [
 function optsHtml() {
   return '<div class="opts"><label class="opt"><input type="checkbox" id="work" data-fk="work"' + (WORK ? ' checked' : '') + '><span>Workbook does work: a circled digit crosses out the rest of its column' + (!P || P.singleOption || view !== 'play' ? ', and a circled option crosses out the rest of its card' : '') + (view !== 'play' ? ' (options only when each predicate has one secret option)' : '') + '</span></label>'
     + '<label class="opt"><input type="checkbox" id="hl" data-fk="hl"' + (HL ? ' checked' : '') + '><span>Highlight the options the current code satisfies</span></label>'
-    + '<div class="theme" role="group" aria-label="Colour theme"><span>Theme</span>' + THEMES.map(x => '<button class="ghost" data-act="theme" data-v="' + x[0] + '" aria-pressed="' + (THEME === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>';
+    + themeHtml() + '</div>';
 }
+function themeHtml() { return '<div class="theme" role="group" aria-label="Colour theme"><span>Theme</span>' + THEMES.map(x => '<button class="ghost" data-act="theme" data-v="' + x[0] + '" aria-pressed="' + (THEME === x[0]) + '">' + x[1] + '</button>').join('') + '</div>'; }
 function aidsWord() {   // the folded Aids row says what is on, so it need not be opened to check
   const on = [WORK ? 'Workbook' : '', HL ? (WORK ? 'highlighter' : 'Highlighter') : ''].filter(Boolean);
   return (on.length ? on.join(', ') : 'No aids') + ' \u00b7 ' + THEMES.find(x => x[0] === THEME)[1];   // the row's label already says Aids & theme
@@ -624,7 +625,7 @@ function renderPlay() {
     h += '</div></article>';
   });
   h += '</div></div></section><div class="lbl">Aids</div>' + optsHtml();
-  }
+  } else h += themeHtml();   // a finished game has no aids to set, but the theme stays at the bottom
   app.innerHTML = h;
   if (fk) { const el = app.querySelector('[data-fk="' + fk + '"]'); if (el && !el.disabled) el.focus({ preventScroll: true }); }
   { const on = app.querySelector('.spc .slot.on'), box = on && on.closest('.spchart'); if (box && box.scrollWidth > box.clientWidth) box.scrollLeft = Math.max(0, on.offsetLeft + on.offsetWidth / 2 - box.clientWidth / 2); }   // keep the chosen step in view when the chart scrolls
