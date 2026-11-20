@@ -6,7 +6,7 @@ A solitaire deduction game for phones: find a three-digit code (each digit 1–5
 
 GitHub Pages publishes only the `www/` folder, through the workflow in `.github/workflows/pages.yml` (Settings → Pages → Source: GitHub Actions). It runs whenever a push changes `www/`. The folder holds:
 
-- `index.html`: the whole game in one self-contained file, with no network requests.
+- `index.html`: the whole game in one self-contained file. It sends nothing anywhere; its only network requests fetch the site's own files, through `sw.js`, to update and work offline.
 - `404.html`: the page Pages shows for any address that does not exist, in the game's styles and theme.
 - `manifest.webmanifest` and `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`: what phones use to install the game on the home screen.
 - `sw.js`: the service worker that keeps an offline copy. It fetches from the network first, so online players always get the newest version; offline, or when the network takes over four seconds, it serves the last copy seen. Each build stamps a new version into it, which replaces the old copy.
