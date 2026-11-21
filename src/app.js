@@ -291,21 +291,23 @@ function solverRun(rows) {
   return { steps, bound: bound(), knew };
 }
 // chart of the solver's count, its worksheet at one step, and why it changed
-function solverPanel(sol) {
-  const st = sol.steps, n = st.length, cur = Math.max(0, Math.min(n - 1, ui.step === null ? n - 1 : ui.step)), s = st[cur];
+function solverPanel(sol, guess) {   // guess: the winning code, drawn as a last dotted drop to 0 bits
+  const st = sol.steps, n = st.length + (guess ? 1 : 0), cur = Math.max(0, Math.min(st.length - 1, ui.step === null ? st.length - 1 : ui.step)), s = st[cur];
   // the chart fills its column: points sit at the middle of equal slots, each slot between 75 and 110 px wide, so the line
   // stretches with the width while the text stays its own size; below 75 px a slot the chart scrolls sideways
   // log scale: height is bits of uncertainty left, log2(codes), so every halving of the codes is the same drop (125 codes is 7.0 bits, 1 code is 0)
   const H = 150, bits = v => Math.log2(Math.max(1, v)), y = v => 40 + (1 - bits(v) / Math.log2(125)) * 72, X = i => (i + 0.5) * 1000 / n;
   const bw = v => { const b = bits(v); return (b < 0.05 ? '0' : b.toFixed(1)) + ' bits'; };
   let svg = '<div class="spc" style="width:min(100%,' + n * 110 + 'px);min-width:' + n * 75 + 'px" role="img" aria-label="Most codes still possible after each turn: ' + st.map(g => g.after).join(', ') + '. Height shows bits of uncertainty left, so each halving is the same drop.">'
-    + '<svg viewBox="0 0 1000 ' + H + '" preserveAspectRatio="none" aria-hidden="true"><polyline class="ln" vector-effect="non-scaling-stroke" points="' + st.map((g, i) => X(i).toFixed(1) + ',' + y(g.after).toFixed(1)).join(' ') + '"/></svg>';
+    + '<svg viewBox="0 0 1000 ' + H + '" preserveAspectRatio="none" aria-hidden="true"><polyline class="ln" vector-effect="non-scaling-stroke" points="' + st.map((g, i) => X(i).toFixed(1) + ',' + y(g.after).toFixed(1)).join(' ') + '"/>'
+    + (guess ? '<line class="ln guess" vector-effect="non-scaling-stroke" x1="' + X(st.length - 1).toFixed(1) + '" y1="' + y(st[st.length - 1].after).toFixed(1) + '" x2="' + X(st.length).toFixed(1) + '" y2="' + y(1).toFixed(1) + '"/>' : '') + '</svg>';
   st.forEach((g, i) => { svg += '<div class="slot' + (i === cur ? ' on' : '') + '" data-act="sp-go" data-i="' + i + '" style="left:' + (i * 100 / n).toFixed(3) + '%;width:' + (100 / n).toFixed(3) + '%" aria-hidden="true"><span class="dot" style="top:' + y(g.after).toFixed(1) + 'px"></span>' + (i === 0 || i === cur || g.after !== st[i - 1].after ? '<span class="v" style="top:' + (y(g.after) - 33).toFixed(1) + 'px">' + bw(g.after) + '</span><span class="vc" style="top:' + (y(g.after) - 19).toFixed(1) + 'px">(' + plural(g.after, 'code') + ')</span>' : '') + '<span class="t" style="top:122px">' + esc(g.top) + '</span><span class="t" style="top:136px">' + esc(g.bot) + '</span></div>'; });
+  if (guess) svg += '<div class="slot guess" style="left:' + (st.length * 100 / n).toFixed(3) + '%;width:' + (100 / n).toFixed(3) + '%" aria-hidden="true"><span class="dot" style="top:' + y(1).toFixed(1) + 'px"></span><span class="v" style="top:' + (y(1) - 33).toFixed(1) + 'px">0 bits</span><span class="vc" style="top:' + (y(1) - 19).toFixed(1) + 'px">(1 code)</span><span class="t" style="top:122px">' + DAG + cs(guess) + '</span><span class="t" style="top:136px">your guess</span></div>';
   svg += '</div>';
   let ws = '<div class="spgrid">' + DIG.map(d => '<i class="h">' + d + '</i>').join('');   // same look as the player's worksheet: a white key is still possible, bare and struck is ruled out, blue strike is ruled out at this step, bold is the only one left
   for (let v = 1; v <= 5; v++) for (let d = 0; d < 3; d++) ws += '<i class="' + (s.dom[d].includes(v) ? '' : 'off') + (s.d.includes(d + ':' + v) ? ' new' : '') + '"><span class="sr">' + DIG[d] + ' </span>' + v + (s.dom[d].includes(v) ? '' : '<span class="sr">' + (s.d.includes(d + ':' + v) ? ' (ruled out at this step)' : ' (ruled out)') + '</span>') + '</i>';
   ws += '</div><div class="spopts">' + P.preds.map((p, i) => '<div><b class="letter">' + LET[i] + '</b><div class="spchips">' + p.options.map((o, k) => '<span class="' + (s.opts[i].includes(k) ? (s.opts[i].length === 1 ? 'only' : '') : 'off') + (s.o.includes(i + ':' + k) ? ' new' : '') + '">' + esc(o.l) + (s.opts[i].includes(k) ? (s.opts[i].length === 1 ? '<span class="sr"> (the only one left)</span>' : '') : '<span class="sr">' + (s.o.includes(i + ':' + k) ? ' (ruled out at this step)' : ' (ruled out)') + '</span>') + '</span>').join('') + '</div></div>').join('') + '</div>';
-  return '<div class="sp"><div class="spchart">' + svg + '</div><div class="spside"><div class="spnav"><button class="ghost" data-act="sp-prev" data-fk="spprev"' + (cur === 0 ? ' disabled' : '') + ' aria-label="previous step">‹ Back</button><span>' + (cur === 0 ? 'Start' : 'Step ' + cur + ' of ' + (n - 1)) + '</span><button class="ghost" data-act="sp-next" data-fk="spnext"' + (cur === n - 1 ? ' disabled' : '') + ' aria-label="next step">Next ›</button></div>'
+  return '<div class="sp"><div class="spchart">' + svg + '</div><div class="spside"><div class="spnav"><button class="ghost" data-act="sp-prev" data-fk="spprev"' + (cur === 0 ? ' disabled' : '') + ' aria-label="previous step">‹ Back</button><span>' + (cur === 0 ? 'Start' : 'Step ' + cur + ' of ' + (st.length - 1)) + '</span><button class="ghost" data-act="sp-next" data-fk="spnext"' + (cur === st.length - 1 ? ' disabled' : '') + ' aria-label="next step">Next ›</button></div>'
     + '<div class="spws">' + ws + '</div><div class="spwhy"><p><b>' + esc(s.ev) + '</b> · at most ' + plural(s.after, 'code') + '</p><ul>' + s.why.map(w => '<li>' + esc(w) + '</li>').join('') + '</ul></div></div></div>';
 }
 function verdict() {
@@ -613,7 +615,7 @@ function renderPlay() {
     h += '<p class="verdict">' + esc(v.text) + '</p>';
     h += '<div class="lbl">Summary to share</div><pre class="out">' + esc(shareText(v)) + '</pre>';
     h += '<div class="endb"><button class="primary" data-act="copyshare" data-fk="copyshare">Copy summary</button><button class="ghost" data-act="again" data-fk="again">Play again</button><button class="ghost" data-act="setup" data-fk="setup2">New puzzle</button><button class="ghost" data-act="export" data-fk="export2">Export table (spoiler)</button></div>';
-    h += '<h2 class="sub">How the worksheet saw it</h2>' + solverPanel(v.sol);
+    h += '<h2 class="sub">How the worksheet saw it</h2>' + solverPanel(v.sol, P.solutions === 1 ? S.rows[S.rows.length - 1].code : null);
     h += '<p class="hint">The line shows what crossing out on the worksheet alone had left after each turn, in bits: each bit halves the codes still possible, so 7.0 bits is all 125 codes and 0 bits is one. The codes counted are the remaining values for x, y and z multiplied together. Tap a point, or use Back and Next, to see that worksheet at that moment and why it changed. Crossings in blue are new at that step; bold marks the only option left. Checking every code against your evaluations and the start-screen facts, ' + plural(v.exact, 'code') + ' remained possible when you guessed.</p></section>';
   }
 

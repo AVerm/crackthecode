@@ -358,3 +358,6 @@ button.jump{font:inherit;color:inherit;background:none;border:none;padding:0;cur
 .sp>.spchart{min-width:0;width:100%;max-width:100%}
 .spc .vc{font-size:10.5px}
 .spc .on .vc{color:var(--accent)!important}
+.spc .ln.guess{stroke-dasharray:3 4;stroke:var(--muted)}
+.spc .slot.guess{cursor:default}
+.spc .slot.guess .dot{background:var(--paper);box-shadow:inset 0 0 0 1.5px var(--ink)}
