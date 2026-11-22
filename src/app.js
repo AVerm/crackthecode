@@ -85,7 +85,7 @@ function resolveCard(str) {
 }
 function buildPuzzle(pids, masks) {
   const preds = pids.map((pid, i) => {
-    const lp = PRED[pid], options = lp.o.map(o => ({ l: o[0], c: o[1], t: CARD[o[1]].t }));
+    const lp = PRED[pid], options = lp.o.map(o => ({ l: o[0], c: o[1], f: o[2] || o[0], t: CARD[o[1]].t }));   // l: the chip's label, which may lean on its card's title; f: the full wording, for explanations and screen readers
     const active = options.map((o, k) => k).filter(k => masks[i] >> k & 1);
     if (!active.length || masks[i] >= (1 << options.length)) throw new Error('bad option mask');
     return { id: pid, text: lp.text, options, active };
@@ -248,7 +248,7 @@ function solverRun(rows) {
   const bound = () => dom[0].size * dom[1].size * dom[2].size;
   const vals = (d, fd, fv) => d === fd ? [fv] : Array.from(dom[d]);
   const support = (i, k, fd, fv, loose) => { for (const x of vals(0, fd, fv)) for (const y of vals(1, fd, fv)) for (const z of vals(2, fd, fv)) if (optTrue(i, k, [x, y, z]) && (loose || P.overlap || nTrue(i, [x, y, z]) === 1)) return true; return false; };
-  const q = (i, k) => '“' + P.preds[i].options[k].l + '”', many = (a, one, more) => a.length > 1 ? more : one;
+  const q = (i, k) => '“' + P.preds[i].options[k].f + '”', many = (a, one, more) => a.length > 1 ? more : one;
   function propagate(note) {
     let ch = true;
     while (ch) {
@@ -625,7 +625,7 @@ function renderPlay() {
   h += '</div><div class="cards">';
   P.preds.forEach((p, i) => {
     h += '<article class="card" id="card' + i + '"><h3><button class="letter jump" data-act="tocol" data-i="' + i + '" tabindex="-1" aria-hidden="true">' + LET[i] + '</button><span>' + esc(p.text) + '</span></h3><div class="chips">';
-    p.options.forEach((o, k) => { h += '<button class="chip mark m' + markO(i, k) + (determined(i, k) ? ' match' : '') + '" data-mark="o:' + i + ':' + k + '" data-fk="mo' + i + '_' + k + '" aria-label="' + LET[i] + ': ' + esc(o.l) + STATE_WORD[markO(i, k)] + '">' + esc(o.l) + '</button>'; });
+    p.options.forEach((o, k) => { h += '<button class="chip mark m' + markO(i, k) + (determined(i, k) ? ' match' : '') + '" data-mark="o:' + i + ':' + k + '" data-fk="mo' + i + '_' + k + '" aria-label="' + LET[i] + ': ' + esc(o.f) + STATE_WORD[markO(i, k)] + '">' + esc(o.l) + '</button>'; });
     h += '</div></article>';
   });
   h += '</div></div></section><div class="lbl">Aids</div>' + optsHtml();

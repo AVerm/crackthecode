@@ -11,7 +11,7 @@ import generate_puzzles as G
 lib = json.load(open(HERE / "library.json", encoding="utf-8")); tm = json.load(open(HERE / "tm_compat.json", encoding="utf-8"))
 cards = {c[0]: c for c in lib["cards"]}; preds = lib["predicates"]; byid = {p["id"]: p for p in preds}
 counts = {p["id"]: len(p["options"]) for p in preds}; num2card = {n: c[0] for c in lib["cards"] for n in c[1]}
-LIB = {"preds": [{"id": p["id"], "text": p["text"], "o": [[o[0], o[1]] for o in p["options"]]} for p in preds], "cards": [[c[0], c[1], c[3]] for c in lib["cards"]]}
+LIB = {"preds": [{"id": p["id"], "text": p["text"], "o": [[o[0], o[1]] + o[3:4] for o in p["options"]]} for p in preds], "cards": [[c[0], c[1], c[3]] for c in lib["cards"]]}
 TM = {"criteria": {int(k): v for k, v in tm["criteria"].items()}, "numbers": {int(k): v for k, v in tm["numbers"].items()}}
 ids = {p["id"] for p in preds}; rng = random.Random(2026)
 # legacy pack: the 20 games printed in the Turing Machine manual, as (criteria card, verification number) pairs
