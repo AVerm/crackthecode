@@ -58,7 +58,7 @@ const src = page.slice(page.indexOf('<script>') + 8, page.lastIndexOf('</script>
     WORK = rep % 2 === 0; HL = rep % 3 === 0; S.marks.d[0][2] = 2; S.marks.o[0][0] = 2; renderPlay();
   }
   console.log('games', games, JSON.stringify(verdicts));
-  // 4b. in-page generator: every mode set, timing, and that a ticked mode is always honoured
+  // 4b. in-page generator: every mode set, timing, and that a checked mode is always honored
   const combos = []; for (let m = 0; m < 8; m++) combos.push([!!(m & 4), !!(m & 2), !!(m & 1)]);
   let worst = 0, total = 0, made = 0; const gen = Math.random;
   for (const [s, x, u] of combos) for (const k of [4, 5, 6]) for (let r = 0; r < 12; r++) {
