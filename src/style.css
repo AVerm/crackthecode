@@ -28,15 +28,12 @@ body{background:var(--paper);color:var(--ink);font-family:var(--ui);font-size:15
 button,select{font:inherit;color:inherit}
 button{cursor:pointer;-webkit-tap-highlight-color:transparent;background:none;border:none}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-
-.top{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}
+.top{display:flex;flex-wrap:wrap;align-items:baseline}
 .top h1{font-family:var(--math);font-style:italic;font-weight:600;font-size:26px;margin:0;letter-spacing:.01em;text-wrap:balance}
-.meta{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--muted);font-size:13px;align-items:center;font-variant-numeric:tabular-nums}
+.meta{display:flex;flex-wrap:wrap;color:var(--muted);align-items:center;font-variant-numeric:tabular-nums}
 .meta b{color:var(--ink);font-weight:600}
 .meta select{background:var(--paper);border:none;padding:0;color:var(--ink)}
-.tools{display:flex;gap:14px;margin-left:auto}
-.ghost{padding:2px 0;font-size:13px;color:var(--muted)}
-.ghost:hover{color:var(--accent)}
+.tools{display:flex}
 
 .board{font-family:var(--math);font-variant-numeric:tabular-nums}
 .row{display:grid;grid-template-columns:repeat(3,minmax(28px,.9fr)) repeat(var(--n),minmax(28px,1fr)) 74px;align-items:center}
@@ -50,7 +47,6 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent;background:none;bo
 .r.t{color:var(--true)} .r.f{color:var(--false)}
 .r.echo{background:var(--hl)}
 .r.contra{background:var(--contra)}
-.empty{padding:12px 0 6px;text-align:center;color:var(--muted);font-family:var(--ui);font-size:13px}
 
 /* input row: every control is centered on the line of the current digit (20px above it, 32px tall) */
 .input{align-items:start;padding-top:2px}
@@ -62,10 +58,8 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent;background:none;bo
 .dv.cur{height:32px;line-height:32px;font-size:23px;font-weight:600}
 .dv.m1{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--ink);text-decoration-thickness:1.5px}
 .dv.m2{box-shadow:inset 0 0 0 1.5px var(--ink);border-radius:50%}
-.input>.c.tickwrap{padding-top:24px}
-.box{width:24px;height:24px;border:1px solid var(--ink);border-radius:3px;background:var(--paper);font-family:var(--ui);font-size:14px;font-weight:600;padding:0;line-height:1;color:var(--accent-ink)}
-.box.on,.box.pending{background:var(--accent);border-color:var(--accent)}
-.tickwrap .r{line-height:24px}
+.box{border-radius:3px;font-family:var(--ui);font-size:14px;font-weight:600;padding:0;line-height:1}
+.box.on,.box.pending{border-color:var(--accent)}
 .input>.c.acts{padding:20px 0 0 8px;gap:8px;align-items:stretch;font-family:var(--ui)}
 .acts button{font-size:12.5px;font-weight:600;line-height:1.15}
 .acts .go{background:var(--accent);color:var(--accent-ink);border-radius:5px;height:32px;padding:0}
@@ -79,7 +73,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent;background:none;bo
 .digits{display:grid;grid-template-columns:repeat(3,32px);gap:2px}
 .dh{text-align:center;font-family:var(--math);font-style:italic;font-weight:600;font-size:17px;height:28px}
 .mark{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
-.digits .mark{height:32px;border-radius:50%;font-family:var(--math);font-size:18px;padding:0}
+.digits .mark{border-radius:50%;font-family:var(--math);padding:0}
 .mark.m1{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--ink);text-decoration-thickness:1.5px}
 .mark.m2{box-shadow:inset 0 0 0 1.5px var(--ink)}
 .cards{display:flex;flex-direction:column;gap:14px;min-width:0}
@@ -87,17 +81,16 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent;background:none;bo
 .card h3{margin:0 0 3px;font-size:14px;font-weight:500;display:flex;gap:8px;align-items:baseline}
 .letter{font-family:var(--math);font-style:italic;font-weight:600;font-size:19px;flex:none}
 .chips{display:flex;flex-wrap:wrap;gap:2px 6px;margin-left:-9px}
-.chip{border-radius:999px;padding:3px 9px;font-family:var(--math);font-size:15.5px;line-height:1.25;text-align:left}
+.chip{border-radius:999px;font-family:var(--math);font-size:15.5px;line-height:1.25;text-align:left}
 .chip.match{background:var(--hl)}
-.chip.nocard{color:var(--muted);font-style:italic}
-.hint{margin:0;font-size:12.5px;color:var(--muted)}
+.hint{margin:0;color:var(--muted)}
 
 .end{display:flex;flex-direction:column;gap:10px}
 .end h2{margin:0;font-family:var(--math);font-style:italic;font-size:22px}
 .stats{display:flex;flex-wrap:wrap;gap:4px 18px;margin:0;font-variant-numeric:tabular-nums}
 .stats div{display:flex;gap:6px} .stats dt{color:var(--muted)} .stats dd{margin:0;font-weight:600}
 pre.out{margin:0;font-family:var(--math);font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
-.endb{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}
+.endb{display:flex;flex-wrap:wrap;align-items:center}
 .primary{background:var(--accent);color:var(--accent-ink);border-radius:5px;padding:6px 14px;font-weight:600}
 
 #modal{position:fixed;inset:0;background:rgba(10,14,22,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
@@ -107,35 +100,24 @@ pre.out{margin:0;font-family:var(--math);font-size:15px;white-space:pre-wrap;ove
 .dlg .math{font-family:var(--math);font-size:19px}
 .dlg textarea{width:100%;height:190px;font-family:var(--math);font-size:15px;background:var(--paper);color:var(--ink);border:1px solid var(--faint);border-radius:4px;padding:8px;resize:vertical}
 .dlg small{color:var(--muted)}
-.dlgb{display:flex;justify-content:flex-end;gap:18px;align-items:center}
+.dlgb{display:flex;justify-content:flex-end;align-items:center}
 @media (max-width:380px){ .row{grid-template-columns:repeat(3,minmax(26px,.9fr)) repeat(var(--n),minmax(24px,1fr)) 64px} .sheet{gap:14px} .digits{grid-template-columns:repeat(3,28px)} }
 @media (prefers-reduced-motion:no-preference){ .box,.chip,.mark{transition:background-color .12s,box-shadow .12s,color .12s} }
 .setup{display:flex;flex-direction:column;gap:12px}
-.lead{margin:0;font-size:15px}
-.bankrow{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:14px;color:var(--muted)}
-.bankrow select{background:var(--paper);color:var(--ink);border:none;border-bottom:1px solid var(--ink);padding:2px 0;max-width:100%}
 .srow{display:grid;grid-template-columns:22px 92px 92px auto;gap:2px 12px;align-items:baseline}
-.srow input{font:inherit;font-family:var(--math);font-size:18px;color:var(--ink);background:var(--paper);border:none;border-bottom:1px solid var(--ink);padding:2px 0;width:100%;border-radius:0;font-variant-numeric:tabular-nums}
+.srow input{font:inherit;font-family:var(--math);font-size:18px;color:var(--ink);border:none;border-bottom:1px solid var(--ink);width:100%;font-variant-numeric:tabular-nums}
 .srow input::placeholder{color:var(--faint);font-family:var(--ui);font-size:13px}
 .srow .ghost{justify-self:start}
 .res{grid-column:2 / -1;font-size:13px;color:var(--muted);min-height:1.2em}
 .res.bad{color:var(--false)}
 .rep{margin:0}
 .verdict{margin:0;font-family:var(--math);font-size:18px;font-style:italic}
-.opt{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
-.opt input{accent-color:var(--accent);margin:0;width:15px;height:15px}
-.setup h2{margin:10px 0 0;font-family:var(--math);font-style:italic;font-weight:600;font-size:18px}
-.field{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;align-items:baseline}
-.field label{font-size:14px;color:var(--muted)}
-.field input{font:inherit;font-family:var(--math);font-size:19px;letter-spacing:.04em;color:var(--ink);background:var(--paper);border:none;border-bottom:1px solid var(--ink);padding:2px 0;width:100%;border-radius:0}
-.field input::placeholder{color:var(--faint);font-family:var(--ui);font-size:13px;letter-spacing:0}
-.field .res{grid-column:2}
+.opt{display:flex;gap:8px;font-size:13px}
+.opt input{accent-color:var(--accent);margin:0}
 .opts{display:flex;flex-direction:column;gap:8px}
-.opt{align-items:flex-start}
-.opt input{margin-top:2px;flex:none}
+.opt input{flex:none}
 .opt b{color:var(--ink);font-weight:500}
 .srow{grid-template-columns:22px 92px minmax(92px,150px) auto}
-.bankrow select{width:100%}
 .primary.big{font-size:16px;padding:9px 18px}
 .muted{color:var(--muted)}
 .dlg.tut{max-width:480px;max-height:86vh;padding:0;gap:0}
@@ -143,23 +125,11 @@ pre.out{margin:0;font-family:var(--math);font-size:15px;white-space:pre-wrap;ove
 .tutbody h2{margin:0 0 8px;font-family:var(--math);font-style:italic;font-size:22px}
 .tutbody p{margin:0 0 10px;font-size:14.5px;line-height:1.45}
 .dlg.tut .dlgb{padding:10px 18px 14px}
-.tools{flex-wrap:wrap;justify-content:flex-end;gap:4px 14px}
-.gotd{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;font-size:14px;color:var(--muted)}
-.gotd input{font:inherit;color:var(--ink);background:var(--paper);border:none;border-bottom:1px solid var(--ink);padding:2px 0;border-radius:0;color-scheme:inherit}
-.srow select{grid-column:2 / -1;width:100%;min-width:0;font:inherit;font-size:13px;background:var(--paper);color:var(--muted);border:none;padding:1px 0;text-overflow:ellipsis}
+.srow select{grid-column:2 / -1;width:100%;min-width:0;font:inherit;font-size:13px;border:none;text-overflow:ellipsis}
 .sp{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:flex-start}
-.spchart{flex:1 1 250px;min-width:0;overflow-x:auto}
-.spchart svg{display:block}
-.spchart .ln{fill:none;stroke:var(--ink);stroke-width:1.2}
-.spchart circle{fill:var(--ink)}
-.spchart .pt{cursor:pointer}
-.spchart .pt.on circle{fill:var(--accent)}
-.spchart text{font-family:var(--math);text-anchor:middle;fill:var(--muted)}
-.spchart .v{font-size:12px;fill:var(--ink)}
-.spchart .t{font-size:10.5px}
-.spchart .pt.on .t,.spchart .pt.on .v{fill:var(--accent)}
-.spside{flex:1 1 230px;min-width:0;display:flex;flex-direction:column;gap:8px}
-.spnav{display:flex;gap:12px;align-items:baseline;font-size:13px;color:var(--muted)}
+.spchart{min-width:0}
+.spside{min-width:0;display:flex;flex-direction:column;gap:8px}
+.spnav{display:flex;gap:12px;font-size:13px;color:var(--muted)}
 .spnav button:disabled{opacity:.3;cursor:default}
 .spws{display:flex;gap:16px;align-items:flex-start}
 .spgrid{display:grid;grid-template-columns:repeat(3,18px);font-family:var(--math);font-size:14px;line-height:18px;text-align:center;flex:none}
@@ -184,7 +154,7 @@ pre.out{margin:0;font-family:var(--math);font-size:15px;white-space:pre-wrap;ove
 .ghost:hover{color:var(--accent)}
 .ghost.big{font-size:16px;padding:9px 18px;border-radius:5px;font-weight:600}
 .primary:disabled,.ghost:disabled{opacity:.35;cursor:not-allowed}
-.tools{gap:6px;justify-content:flex-start;margin-left:0;width:100%}
+.tools{justify-content:flex-start;margin-left:0;width:100%}
 .top{gap:8px 14px}
 .meta{gap:4px 16px;font-size:14px}
 .meta b{font-family:var(--math);font-size:15px}
@@ -193,22 +163,17 @@ pre.out{margin:0;font-family:var(--math);font-size:15px;white-space:pre-wrap;ove
 .board>.lbl{margin-bottom:2px}
 .zone{background:var(--zone);border-radius:10px;margin:6px -10px 0;padding:8px 10px 10px}
 .zone>.lbl{display:block;margin-bottom:4px}
-.zone.ws{margin-top:0;padding-bottom:14px}
-.zone .pm{background:var(--paper);border-radius:6px;color:var(--ink);width:30px;height:22px;line-height:20px;font-weight:600}
-.zone .stepper{gap:3px}
+.zone.ws{padding-bottom:14px}
+.zone .pm{color:var(--ink);font-weight:600}
 .zone .acts .know{background:var(--paper);border-radius:5px;padding:5px 2px}
 .zone .digits .mark,.zone .chip{background:var(--paper)}
 .zone .chip.match{background:var(--hl)}
-.zone .chips{margin-left:0;gap:5px 6px}
+.zone .chips{margin-left:0}
 .zone .digits{gap:4px}
-.input>.c.tickwrap{padding-top:28px}
-.input>.c.acts{padding-top:25px}
 .opt{color:var(--ink)}
 .opt .muted,.opt b+span{color:var(--muted)}
-.quick{display:flex;flex-wrap:wrap;gap:10px}
-.field input,.gotd input,.srow input{background:var(--zone);padding:4px 8px;border-radius:5px 5px 0 0}
-.bankrow select,.srow select{background:var(--zone);border-radius:5px;padding:5px 6px;color:var(--ink)}
-.bankrow select{border-bottom:none}
+.srow input{background:var(--zone);padding:4px 8px;border-radius:5px 5px 0 0}
+.srow select{background:var(--zone);border-radius:5px;padding:5px 6px;color:var(--ink)}
 .spnav{align-items:center}
 .dlgb{gap:10px}
 .hint{font-size:12.5px}
@@ -219,8 +184,6 @@ pre.out{margin:0;font-family:var(--math);font-size:15px;white-space:pre-wrap;ove
 .zone.next{padding-top:2px}
 .zone.next>.lbl{margin:8px 0 0}
 .board>.head{margin-bottom:0}
-.field.code{grid-template-columns:auto minmax(0,1fr) auto;align-items:center}
-.field.code .primary{padding:6px 16px}
 #report:empty,#report2:empty{display:none}
 .start{display:grid;grid-template-columns:minmax(0,1fr) 84px;gap:8px;align-items:stretch;margin-top:-6px}
 .start>input,.start>select,.foldsel{font:inherit;font-size:15px;color:var(--ink);background:var(--zone);border:none;border-radius:6px;padding:8px 10px;min-width:0;width:100%;text-align:left;height:38px;color-scheme:inherit}
@@ -283,10 +246,8 @@ pre.out{margin:0;font-family:var(--math);font-size:15px;white-space:pre-wrap;ove
 .start>input,.start>select,.foldsel,.start>.primary{height:44px}
 /* messages keep a fixed line under the test row, so the worksheet never jumps */
 .status.slot,.status.slot:empty{display:block;min-height:1.45em;margin:4px 0 0;font-size:13px}
-/* not by color alone: a contradicting cell is ringed, and marks new at a review step are ringed in blue */
+/* not by color alone: a contradicting cell is ringed, and marks new at a review step are struck through as well as blue */
 .r.contra{box-shadow:0 0 0 2px var(--false)}
-.sp .spgrid .new{box-shadow:inset 0 0 0 1.5px var(--accent);border-radius:50%}
-.sp .spopts .new{box-shadow:0 0 0 1.5px var(--accent);border-radius:4px;padding:0 3px}
 .newbie{margin:-4px 0 0;font-size:15px}
 .start>.big{height:44px;padding:0 18px;justify-self:start}
 .firstp{align-self:center;color:var(--muted);font-size:14px}
@@ -318,14 +279,13 @@ button.jump{font:inherit;color:inherit;background:none;border:none;padding:0;cur
 .sp .spws{background:var(--zone);border-radius:10px;padding:8px;gap:12px}
 .sp .spgrid{grid-template-columns:repeat(3,26px);gap:3px;line-height:26px;font-size:15px}
 .sp .spgrid i:not(.h){background:var(--paper);border-radius:50%;position:relative;color:var(--ink)}
-.sp .spopts{gap:4px;font-size:13.5px}
-.sp .spopts>div{display:flex;flex-wrap:wrap;align-items:center;gap:3px}
+.sp .spopts{font-size:13.5px}
+.sp .spopts>div{flex-wrap:wrap}
 .sp .spopts span:not(.sr){background:var(--paper);border-radius:999px;padding:1px 8px;margin:0;position:relative;color:var(--ink)}
 .sp .spgrid .off,.sp .spopts span.off{background:transparent!important;color:var(--gone);text-decoration:none}
 .sp .spgrid .off::after,.sp .spopts span.off::after{content:"";position:absolute;left:4px;right:4px;top:50%;border-top:1.5px solid var(--gone)}
 .sp .spgrid .off.new,.sp .spopts span.off.new{color:var(--accent)}
 .sp .spgrid .off.new::after,.sp .spopts span.off.new::after{border-top:2px solid var(--accent)}
-.sp .spgrid .new,.sp .spopts .new{box-shadow:none}
 .sp .spopts span.only{font-weight:700}
 /* end screen: the summary reads as the thing you will paste */
 .end h2.sub{font-size:19px;margin-top:10px}
@@ -333,7 +293,7 @@ button.jump{font:inherit;color:inherit;background:none;border:none;padding:0;cur
 .card h3 button.letter.jump{font-family:var(--math);font-style:italic;font-weight:600;font-size:19px}
 
 /* review panel: the chart keeps its natural width (wrapping under the worksheet when there is no room), and each card is its letter beside wrapping chips */
-.spchart{flex:0 1 auto;max-width:100%}
+.spchart{max-width:100%}
 .spside{flex:1 1 300px;max-width:560px}
 .sp .spws{align-items:flex-start}
 .sp .spopts{flex:1 1 auto;gap:6px}
