@@ -1,5 +1,5 @@
 const LET = ['P','Q','R','S','T','U','V','W'], DIG = ['x','y','z'];
-const T = '⊤', F_ = '⊥', DAG = '†', DOT = '·', LE = '≤', TITLE = 'Crack the Code!';
+const T = '⊤', F_ = '⊥', DAG = '†', DOT = '·', TITLE = 'Crack the Code!';
 const KEY = 'ctc-v3', OLDKEY = 'ctc-v2';
 const A32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ', CODE_VERSION = '1', NPRED_V1 = 95, PID0 = 101;
 const app = document.getElementById('app'), modal = document.getElementById('modal');
@@ -318,7 +318,7 @@ function verdict() {
   else if (sol.knew !== null) { text = 'You guessed as soon as the worksheet alone pinned down the code.'; short = 'Tied the worksheet'; }
   else if (exact === 1) { text = 'You found the code before the worksheet alone could. It still allowed up to ' + sol.bound + ' codes.'; short = 'Beat the worksheet'; }
   else { text = 'Did you cheat, or just get lucky? ' + exact + ' possibilities remained.'; short = 'Lucky guess (' + exact + ' left)'; }
-  return { text, short, sol, exact, tag: '' };
+  return { text, short, sol, exact };
 }
 
 // ---------- text outputs ----------
@@ -334,7 +334,7 @@ function shareText(v) {
     else if (rowWon(r)) line += ' ' + DAG + T.repeat(P.preds.length);
     else line += ' ' + DAG + r.fresh.map(i => r.res[i] ? T : F_).join('');
   }
-  return headLines(false).concat([line.trim(), plural(S.turns, 'turn') + ', ' + plural(S.evals, 'evaluation') + ', ' + plural(S.wrong, 'wrong guess', 'wrong guesses')], S.rival ? [(rivalDiff() < 0 ? 'Beat' : rivalDiff() > 0 ? 'Lost to' : 'Tied with') + ' a friend\u2019s ' + rivalWord(S.rival)] : [], [v.tag + v.short]).join('\n');
+  return headLines(false).concat([line.trim(), plural(S.turns, 'turn') + ', ' + plural(S.evals, 'evaluation') + ', ' + plural(S.wrong, 'wrong guess', 'wrong guesses')], S.rival ? [(rivalDiff() < 0 ? 'Beat' : rivalDiff() > 0 ? 'Lost to' : 'Tied with') + ' a friend\u2019s ' + rivalWord(S.rival)] : [], [v.short]).join('\n');
 }
 function exportText() {
   const n = P.preds.length, rows = S.rows.map(r => (cs(r.code) + (r.guess ? DAG : ' ')) + ' ' + Array.from({ length: n }, (_, i) => i in r.res ? (r.res[i] ? T : F_) : DOT).join(' '));
@@ -480,10 +480,9 @@ function aidsWord() {   // the folded Aids row says what is on, so it need not b
   return (on.length ? on.join(', ') : 'No aids') + ' \u00b7 ' + THEMES.find(x => x[0] === THEME)[1];   // the row's label already says Aids & theme
 }
 const canPlay = () => !!(form.report && form.report.pz && form.report.pz.solutions > 0);
-function playWord() { return 'Play'; }   // Resume lives only in the Continue row; Play on a puzzle you are partway through still picks up where you left off
 function setReport() {
   const a = document.getElementById('report'), b = document.getElementById('report2'), p = document.getElementById('codeplay');
-  if (a) a.innerHTML = reportHtml(false); if (b) b.innerHTML = reportHtml(true); if (p) { p.disabled = !canPlay(); p.textContent = playWord(); }
+  if (a) a.innerHTML = reportHtml(false); if (b) b.innerHTML = reportHtml(true); if (p) p.disabled = !canPlay();
 }
 function reportHtml(play) {
   const rp = form.report; if (!rp) return '';
@@ -494,7 +493,7 @@ function reportHtml(play) {
   if (n > 0) h += '<p class="rep">' + (pz.overlap ? 'On at least one predicate, the answer fits more than one of the listed options.' : 'On every predicate, the answer fits exactly one of the listed options.') + '</p>';
   const out = []; if (MODE.single && !pz.singleOption) out.push('one secret option per predicate'); if (MODE.excl && pz.overlap) out.push('exclusive predicates'); if (MODE.uniq && n > 1) out.push('unique answers');
   if (n > 0 && out.length) h += '<p class="rep muted">This puzzle is outside the game modes you checked (' + out.join(', ') + '). You can still play it.</p>';
-  if (n > 0 && (play || (n > 1 && !form.show))) h += '<div class="endb">' + (play ? '<button class="primary" data-act="play">' + playWord() + '</button>' : '') + (n > 1 && !form.show ? '<button class="ghost" data-act="count">Show count</button>' : '') + '</div>';
+  if (n > 0 && (play || (n > 1 && !form.show))) h += '<div class="endb">' + (play ? '<button class="primary" data-act="play">Play</button>' : '') + (n > 1 && !form.show ? '<button class="ghost" data-act="count">Show count</button>' : '') + '</div>';
   return h;
 }
 function rowsHtml() {
@@ -535,7 +534,7 @@ function renderSetup() {
     h += '<div class="opts">' + MODES.map(m => '<label class="opt"><input type="checkbox" id="mode-' + m[0] + '"' + (MODE[m[0]] ? ' checked' : '') + '><span><b>' + m[1] + '</b> <span id="modetxt-' + m[0] + '">' + (MODE[m[0]] ? m[3] : m[4]) + m[2] + '</span></span></label>').join('') + '</div>';
     h += '<p class="hint">A checked mode is guaranteed; an unchecked one is left to chance. The modes also decide which game of the day you get, which starter puzzles the list shows, and what the New buttons make.</p>';
   }
-  h += '<div class="lbl">Game code</div><div class="start"><input id="code" aria-label="Game code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="a code, or a friend’s summary" value="' + esc(form.code) + '"><button class="primary" id="codeplay" data-act="play"' + (canPlay() ? '' : ' disabled') + '>' + playWord() + '</button></div>';
+  h += '<div class="lbl">Game code</div><div class="start"><input id="code" aria-label="Game code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="a code, or a friend’s summary" value="' + esc(form.code) + '"><button class="primary" id="codeplay" data-act="play"' + (canPlay() ? '' : ' disabled') + '>Play</button></div>';   // always Play: Resume lives only in the Continue row, and Play on a puzzle partway through picks up where it left off
   h += '<div class="lbl">Game list <span class="note">fills in the code above</span></div><div class="start"><select id="bank" aria-label="Game list">' + bankHtml() + '</select></div>';
   h += '<span class="res' + (form.codeBad ? ' bad' : '') + '" id="codemsg">' + (form.codeBad ? esc(codeProblem(form.code)) : '') + '</span><div id="report">' + reportHtml(false) + '</div>';
   const rec = recentGames().filter(s => !cont || gameId(s) !== gameId(cont));
