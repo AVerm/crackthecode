@@ -213,7 +213,8 @@ function resume(state) { try { P = buildPuzzle(state.def.p, state.def.m); S = st
 
 // ---------- play helpers ----------
 function known(c) { const m = {}, key = cs(c); S.rows.forEach((r, ri) => { if (cs(r.code) === key) for (const i in r.res) if (!(i in m)) m[i] = { val: r.res[i], row: ri }; }); return m; }
-function effTicks() { const k = known(S.dial); return S.ticks.slice().sort((a, b) => a - b).filter(i => !(i in k)); }
+function effTicks(k = known(S.dial)) {   // the checked predicates not already answered for this code
+  return S.ticks.slice().sort((a, b) => a - b).filter(i => !(i in k)); }
 function determined(i, k) { return HL && !S.won && optTrue(i, k, S.dial); }
 // worksheet marks as displayed: in "workbook does work" mode a selected value crosses out its siblings
 const markD = (d, v) => { const m = S.marks.d[d]; return WORK && m[v] !== 2 && m.includes(2) ? 1 : m[v]; };
@@ -344,8 +345,14 @@ function stepSheetHtml(s) {
     return '<span class="' + (left ? (only ? 'only' : '') : 'off') + (now ? ' new' : '') + '">' + esc(o.l) + (only ? '<span class="sr"> (the only one left)</span>' : left ? '' : gone(now)) + '</span>';
   }).join('') + '</div></div>').join('') + '</div>';
 }
-function verdict() {
-  const before = S.rows.slice(0, -1), sol = solverRun(before), exact = exactCount(before), n = S.turns;
+// The worksheet's view and the full check depend only on the game and how many of its rows are counted, and rows are only
+// ever added, so each is worked out once per game and row count; the end screen re-renders on every tap of the chart.
+const memo = { s: null, sol: {}, v: {} };
+function cached(kind, n, make) { if (memo.s !== S) { memo.s = S; memo.sol = {}; memo.v = {}; } return memo[kind][n] || (memo[kind][n] = make()); }
+const solverAt = n => cached('sol', n, () => solverRun(S.rows.slice(0, n)));   // the worksheet's view of the first n rows
+const verdict = () => cached('v', S.rows.length, verdictNow);
+function verdictNow() {
+  const before = S.rows.slice(0, -1), sol = solverAt(before.length), exact = exactCount(before), n = S.turns;
   let text, short;
   if (P.solutions > 1) { text = 'This puzzle has ' + P.solutions + ' solutions, and you found one of them.'; short = 'Puzzle has ' + P.solutions + ' solutions'; }
   else if (sol.knew !== null && sol.knew < n) { text = 'Crossing out on the worksheet alone would have found the code after turn ' + sol.knew + '. You guessed after turn ' + n + '.'; short = 'Lost to the worksheet'; }
@@ -665,7 +672,7 @@ function factsHtml() {
     + '<p>' + (P.overlap ? 'The answer fits more than one listed option on at least one predicate' : 'The answer fits exactly one listed option on every predicate') + '</p></section>';
 }
 function tableHtml() {   // the truth table: a heading row, one row per evaluation or guess, and the row for the next test
-  const n = P.preds.length, kn = known(S.dial), eff = effTicks();
+  const n = P.preds.length, kn = known(S.dial), eff = effTicks(kn);
   const echo = new Set(Object.keys(kn).map(i => kn[i].row + ':' + i)), contra = new Set(S.contra);
   let h = '<section class="board" style="--n:' + n + '" aria-label="Truth table"><div class="lbl">Truth table</div><div class="row head" aria-hidden="true">'
     + DIG.map(d => '<span class="c">' + d + '</span>').join('')
@@ -706,7 +713,7 @@ function inputRowHtml(kn, eff) {   // the code to test, a box per predicate, and
     + '<button class="know" data-act="know" data-fk="know" title="I Know The Answer"' + (canKnow ? '' : ' disabled') + '>I know the answer</button></div></div></div>';
 }
 function hintHtml() {
-  return '<section class="end"><h2>What your answers show so far</h2>' + solverPanel(solverRun(S.rows))
+  return '<section class="end"><h2>What your answers show so far</h2>' + solverPanel(solverAt(S.rows.length))
     + '<p class="hint">This worksheet is filled in from the answers in your table and nothing else: an option is crossed out when an answer contradicts it, and a digit value when no remaining option allows it. Crossings in blue are new at that step; bold marks the only option left.</p></section>';
 }
 function endHtml() {   // a won game: the code, the score, how it compares, the summary, and the worksheet's view
@@ -871,7 +878,7 @@ function tick(i) {
   save(); render();
 }
 function chartStep(a, b) {   // Back, Next, or a tap on a point of the chart
-  const n = solverRun(S.won ? S.rows.slice(0, -1) : S.rows).steps.length, cur = ui.step === null ? n - 1 : ui.step;
+  const n = solverAt(S.won ? S.rows.length - 1 : S.rows.length).steps.length, cur = ui.step === null ? n - 1 : ui.step;
   ui.step = Math.max(0, Math.min(n - 1, a === 'sp-go' ? +b.dataset.i : cur + (a === 'sp-next' ? 1 : -1))); render();
 }
 const ACTIONS = {
