@@ -13,12 +13,16 @@ const ALL = []; for (let x = 1; x <= 5; x++) for (let y = 1; y <= 5; y++) for (l
 let P = null, S = null, view = 'setup';
 const ui = { pending: false, msg: '', bad: false, step: null, hint: false, menu: false };
 const form = { gotd: null, note: '', gdate: '', code: '', codeBad: false, rows: [{ p: '', k: '' }, { p: '', k: '' }, { p: '', k: '' }, { p: '', k: '' }], report: null, show: false };
-const getPref = (k, d) => { try { const v = localStorage.getItem(KEY + ':' + k); return v === null ? d : v === '1'; } catch (e) { return d; } };
-const setPref = (k, v) => { try { localStorage.setItem(KEY + ':' + k, v ? '1' : '0'); } catch (e) {} };
-let HL = getPref('hl', false), WORK = getPref('work', false);
+const LS = {   // every saved game and setting, under KEY; storage that is blocked reads as empty
+  get(k) { try { return localStorage.getItem(KEY + ':' + k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(KEY + ':' + k, v); return true; } catch (e) { return false; } },
+  del(k) { try { localStorage.removeItem(KEY + ':' + k); } catch (e) {} },
+  flag(k, d) { const v = this.get(k); return v === null ? d : v === '1'; },
+  setFlag(k, v) { this.set(k, v ? '1' : '0'); } };
+let HL = LS.flag('hl', false), WORK = LS.flag('work', false);
 // Theme: 'auto' follows the device; the rest force a palette from the stylesheet.
 const THEMES = [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark'], ['black', 'Black']];
-let THEME = (() => { try { return localStorage.getItem(KEY + ':theme') || 'auto'; } catch (e) { return 'auto'; } })();
+let THEME = LS.get('theme') || 'auto';
 function applyTheme() {
   if (!THEMES.some(x => x[0] === THEME)) THEME = 'auto';
   const r = document.documentElement; if (THEME === 'auto') delete r.dataset.theme; else r.dataset.theme = THEME;
@@ -29,7 +33,7 @@ function applyTheme() {
 }
 applyTheme();
 if (window.matchMedia) { const mq = matchMedia('(prefers-color-scheme: dark)'); const f = () => { if (THEME === 'auto') applyTheme(); }; if (mq.addEventListener) mq.addEventListener('change', f); }
-const MODE = { single: getPref('m-single', true), excl: getPref('m-excl', true), uniq: getPref('m-uniq', true) };
+const MODE = { single: LS.flag('m-single', true), excl: LS.flag('m-excl', true), uniq: LS.flag('m-uniq', true) };
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ix = c => (c[0] - 1) * 25 + (c[1] - 1) * 5 + (c[2] - 1);
@@ -40,6 +44,7 @@ const nTrue = (i, c) => { let n = 0; for (const o of P.preds[i].options) if (o.t
 // what the start screen says about the answer is evidence too: a code must agree with it
 const fitsFlag = c => !P.overlap ? P.preds.every((p, i) => nTrue(i, c) === 1) : (P.solutions !== 1 || P.preds.some((p, i) => nTrue(i, c) > 1));
 const optIdx = i => P.preds[i].options.map((o, k) => k);
+const tf = v => v ? T : F_;
 const plural = (n, w, pl) => n + ' ' + (n === 1 ? w : (pl || w + 's'));
 const fmtCode = s => s.replace(/(.{4})(?=.)/g, '$1-');
 
@@ -52,8 +57,10 @@ function encodeGame(pids, masks) {
   let chk = 7; d.forEach((v, i) => { chk = (chk + (2 * i + 1) * v) % 32; });
   return CODE_VERSION + d.map((v, i) => A32[(v + (i + 1) * (2 * chk + 1) + 13) % 32]).join('') + A32[(chk * 5 + 9) % 32];
 }
+// what a typed code may contain besides the code itself: lowercase, spaces, dashes, and I, L, or O for 1 or 0
+const normCode = str => String(str).toUpperCase().replace(/[\s-]/g, '').replace(/[IL]/g, '1').replace(/O/g, '0');
 function decodeGame(str) {
-  const s = String(str).toUpperCase().replace(/[\s-]/g, '').replace(/[IL]/g, '1').replace(/O/g, '0');
+  const s = normCode(str);
   if (s.length < 3 || s[0] !== CODE_VERSION) return null;
   const idx = Array.from(s.slice(1)).map(ch => A32.indexOf(ch)); if (idx.some(v => v < 0)) return null;
   const c = idx.pop(), chk = ((c - 9 + 64) * 13) % 32;
@@ -153,7 +160,8 @@ function randomPuzzle(k, want, rng) {
 }
 // a checked mode is a promise; an unchecked one leaves it to chance
 function wantFromModes(rng) { const a = rng(), b = rng(); return { single: MODE.single ? true : a < 0.5, uniq: MODE.uniq ? true : b < 0.5, excl: MODE.excl ? true : null }; }
-function todayStr() { const d = new Date(), p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+const pad2 = n => String(n).padStart(2, '0'), ymd = d => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+const todayStr = () => ymd(new Date());
 function gameOfDay(date) {
   const rng = mulberry(seedOf('gotd1|' + date + '|' + (MODE.single ? 1 : 0) + (MODE.excl ? 1 : 0) + (MODE.uniq ? 1 : 0))), want = wantFromModes(rng), k = [4, 5, 5, 6][Math.floor(rng() * 4)];
   return randomPuzzle(k, want, rng);
@@ -162,10 +170,7 @@ function gameOfDay(date) {
 // ---------- storage ----------
 // Games are kept by play-through, newest first, and only the last RECENT_MAX are kept: older ones are deleted.
 // A game is listed once it has an evaluation; a game with none is kept only while it is the current game.
-const RECENT_MAX = 5, LS = {
-  get(k) { try { return localStorage.getItem(KEY + ':' + k); } catch (e) { return null; } },
-  set(k, v) { try { localStorage.setItem(KEY + ':' + k, v); return true; } catch (e) { return false; } },
-  del(k) { try { localStorage.removeItem(KEY + ':' + k); } catch (e) {} } };
+const RECENT_MAX = 5;
 const gameId = s => s.id || (s.id = s.gid + '@' + s.startedAt);
 function readGame(id) { try { const s = JSON.parse(LS.get('g:' + id) || 'null'); if (s && s.v === 3 && s.def && gameId(s) === id) return s; } catch (e) {} return null; }
 function recentIds() { try { const a = JSON.parse(LS.get('recent') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
@@ -188,12 +193,13 @@ function fresh(pz, showCount, gotd) {
   return { v: 3, id: pz.gid + '@' + at, gid: pz.gid, def: pz.def, gotd: gotd || null, aids: { w: false, h: false }, showCount: !!showCount, startedAt: at, finishedAt: null, dial: [1, 1, 1], ticks: [], rows: [],
     marks: { d: [0, 1, 2].map(() => [0, 0, 0, 0, 0]), o: pz.preds.map(q => q.options.map(() => 0)) }, turns: 0, evals: 0, wrong: 0, contra: [], won: false };
 }
+function resetUi() { ui.msg = ''; ui.bad = false; ui.pending = false; ui.step = null; ui.hint = false; }
 function noteAids() { if (!S.aids) S.aids = { w: false, h: false }; if (WORK) S.aids.w = true; if (HL) S.aids.h = true; }
 function startGame(pz, showCount, forceNew, gotd) {
   P = pz; const old = forceNew ? null : findGame(pz.gid);
   S = old && !old.won ? old : fresh(pz, showCount, gotd);
   if (showCount) S.showCount = true; noteAids();
-  ui.msg = ''; ui.bad = false; ui.pending = false; ui.step = null; ui.hint = false; view = 'play'; save(); render();
+  resetUi(); view = 'play'; save(); render();
 }
 function resume(state) { try { P = buildPuzzle(state.def.p, state.def.m); S = state; noteAids(); view = 'play'; ui.msg = ''; ui.bad = false; ui.pending = false; return true; } catch (e) { return false; } }
 
@@ -273,11 +279,11 @@ function solverRun(rows) {
     keys.forEach(i => {   // E1: an option the answer contradicts
       const val = r.res[i], gone = [];
       for (const k of Array.from(opts[i])) { const hit = optTrue(i, k, r.code); if (opts[i].size > 1 && (P.singleOption ? hit !== val : (hit && !val))) { opts[i].delete(k); note.o.push(i + ':' + k); gone.push(q(i, k)); } }
-      if (gone.length) note.why.push(LET[i] + '(' + cs(r.code) + ') = ' + (val ? T : F_) + ', and ' + cs(r.code) + (val ? ' does not satisfy ' : ' satisfies ') + gone.join(', ') + ', so ' + many(gone, 'that option is', 'those options are') + ' out.');
+      if (gone.length) note.why.push(LET[i] + '(' + cs(r.code) + ') = ' + tf(val) + ', and ' + cs(r.code) + (val ? ' does not satisfy ' : ' satisfies ') + gone.join(', ') + ', so ' + many(gone, 'that option is', 'those options are') + ' out.');
     });
     propagate(note);
     if (!note.why.length) note.why.push('Nothing new. These answers were already predictable from the worksheet.');
-    if (keys.length) steps.push(Object.assign({ ev: (r.guess ? DAG + ' ' : '') + keys.map(i => LET[i]).join('') + '(' + cs(r.code) + ') = ' + keys.map(i => r.res[i] ? T : F_).join(''), top: keys.map(i => LET[i]).join('') + '(' + cs(r.code) + ')', bot: keys.map(i => r.res[i] ? T : F_).join(''), before, after: bound(), why: note.why, o: note.o, d: note.d }, snap()));
+    if (keys.length) steps.push(Object.assign({ ev: (r.guess ? DAG + ' ' : '') + keys.map(i => LET[i]).join('') + '(' + cs(r.code) + ') = ' + keys.map(i => tf(r.res[i])).join(''), top: keys.map(i => LET[i]).join('') + '(' + cs(r.code) + ')', bot: keys.map(i => tf(r.res[i])).join(''), before, after: bound(), why: note.why, o: note.o, d: note.d }, snap()));
     turns += rowTurns(r);
     if (knew === null && bound() === 1) knew = turns;
   });
@@ -315,7 +321,7 @@ function verdict() {
 }
 
 // ---------- text outputs ----------
-function fmtStart(ms) { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+function fmtStart(ms) { const d = new Date(ms); return ymd(d) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
 function fmtDur(ms) { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 const SETTINGS_KEY = 'S one secret option per predicate, E answer fits one option per card, U one solution, W workbook does work, H highlighter; + yes, - no.';
 function settingsLine() { const a = S.aids || { w: false, h: false }, f = b => b ? '+' : '-'; return 'Settings S' + f(P.singleOption) + ' E' + f(!P.overlap) + ' U' + f(P.solutions === 1) + ' W' + f(a.w) + ' H' + f(a.h); }
@@ -323,14 +329,14 @@ function headLines(withTime) { return [TITLE + ' ' + P.gid + (withTime ? ' ' + f
 function shareText(v) {
   let line = '';
   for (const r of S.rows) {
-    if (!r.guess) line += rowKeys(r).map(i => r.res[i] ? T : F_).join('');
+    if (!r.guess) line += rowKeys(r).map(i => tf(r.res[i])).join('');
     else if (rowWon(r)) line += ' ' + DAG + T.repeat(P.preds.length);
-    else line += ' ' + DAG + r.fresh.map(i => r.res[i] ? T : F_).join('');
+    else line += ' ' + DAG + r.fresh.map(i => tf(r.res[i])).join('');
   }
   return headLines(false).concat([line.trim(), plural(S.turns, 'turn') + ', ' + plural(S.evals, 'evaluation') + ', ' + plural(S.wrong, 'wrong guess', 'wrong guesses')], S.rival ? [(rivalDiff() < 0 ? 'Beat' : rivalDiff() > 0 ? 'Lost to' : 'Tied with') + ' a friend\u2019s ' + rivalWord(S.rival)] : [], [v.short]).join('\n');
 }
 function exportText() {
-  const n = P.preds.length, rows = S.rows.map(r => (cs(r.code) + (r.guess ? DAG : ' ')) + ' ' + Array.from({ length: n }, (_, i) => i in r.res ? (r.res[i] ? T : F_) : DOT).join(' '));
+  const n = P.preds.length, rows = S.rows.map(r => (cs(r.code) + (r.guess ? DAG : ' ')) + ' ' + Array.from({ length: n }, (_, i) => i in r.res ? tf(r.res[i]) : DOT).join(' '));
   return headLines(true).concat(['xyz  ' + LET.slice(0, n).join(' ')], rows).join('\n');
 }
 
@@ -356,7 +362,7 @@ function importTable(text) {
       cells.forEach((c, i) => { if (c === T || c === 'T' || c === 't') res[i] = true; else if (c === F_ || c === 'F' || c === 'f') res[i] = false; else if (c !== DOT && c !== '.') bad = c; });
       if (bad) { err = 'Row ' + count + ' (' + key + ') has a cell that is not ' + T + ', ' + F_ + ', or ' + DOT + '.'; break; }
       const wrong = Object.keys(res).find(i => res[i] !== predVal(+i, code));
-      if (wrong !== undefined) { err = 'Row ' + count + ' does not belong to this game: ' + LET[wrong] + '(' + key + ') is ' + (predVal(+wrong, code) ? T : F_) + ' here. Check the game code and that row.'; break; }
+      if (wrong !== undefined) { err = 'Row ' + count + ' does not belong to this game: ' + LET[wrong] + '(' + key + ') is ' + tf(predVal(+wrong, code)) + ' here. Check the game code and that row.'; break; }
       const kn = seen[key] || (seen[key] = {}), fr = Object.keys(res).map(Number).filter(i => !(i in kn));
       if (m[2]) {
         if (Object.keys(res).length !== n) { err = 'Row ' + count + ' (' + key + ') is marked ' + DAG + ' as a guess, so every cell must be filled.'; break; }
@@ -377,17 +383,14 @@ function importTable(text) {
   return { pz, state: st };
 }
 function showImport() {
-  modal.innerHTML = '<div class="dlg" role="dialog" aria-modal="true"><p>Paste an exported table, finished or not. An unfinished game continues from its last row; a finished one opens on its analysis.</p><textarea id="txtin" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea><small id="txtnote" class="bad"></small><div class="dlgb"><button class="ghost" data-m="0">Cancel</button><button class="primary" data-m="1">Import</button></div></div>';
-  modal.hidden = false; const area = modal.querySelector('textarea'), note = modal.querySelector('#txtnote');
-  modal.onclick = async e => {
+  openModal('<div class="dlg" role="dialog" aria-modal="true"><p>Paste an exported table, finished or not. An unfinished game continues from its last row; a finished one opens on its analysis.</p><textarea id="txtin" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea><small id="txtnote" class="bad"></small><div class="dlgb"><button class="ghost" data-m="0">Cancel</button><button class="primary" data-m="1">Import</button></div></div>', e => {
     const b = e.target.closest('[data-m]'); if (!b) { if (e.target === modal) closeModal(); return; }
     if (b.dataset.m !== '1') { closeModal(); return; }
-    const moved = loadSaves(area.value);
+    const area = modal.querySelector('textarea'), moved = loadSaves(area.value);
     if (moved >= 0) { closeModal(); view = 'setup'; render(); announce('Moved ' + plural(moved, 'saved game') + '.'); const g = document.querySelector('.recent, [data-act="resume"]'); if (g) g.scrollIntoView({ block: 'center' }); return; }
-    const r = importTable(area.value); if (r.error) { note.textContent = r.error; return; }
-    closeModal(); P = r.pz; S = r.state; noteAids(); ui.msg = ''; ui.bad = false; ui.pending = false; ui.step = null; ui.hint = false; view = 'play'; save(); render();
-  };
-  area.focus();
+    const r = importTable(area.value); if (r.error) { modal.querySelector('#txtnote').textContent = r.error; return; }
+    closeModal(); P = r.pz; S = r.state; noteAids(); resetUi(); view = 'play'; save(); render();
+  }, 'textarea');
 }
 
 // ---------- setup screen ----------
@@ -421,11 +424,12 @@ function checkForm() { const pz = formPuzzle(); form.report = pz ? { pz } : { er
 function codeProblem(text) {   // a specific reason a code-box entry was refused
   const words = String(text).trim().split(/\s+/);
   if (words.length > 2) return 'No game code found in that text. A summary starts with a line like “' + TITLE + ' 1CJ0-A72C-7YVF”.';
-  const s = words.join('').toUpperCase().replace(/[\s-]/g, '').replace(/[IL]/g, '1').replace(/O/g, '0'), bad = Array.from(s).find(ch => A32.indexOf(ch) < 0);
+  const s = normCode(words.join('')), bad = Array.from(s).find(ch => A32.indexOf(ch) < 0);
   if (bad) return '“' + bad + '” cannot appear in a game code. Codes use digits and letters, but never U.';
   if (s[0] !== CODE_VERSION) return 'Game codes start with ' + CODE_VERSION + ', like 1CJ0-A72C-7YVF.';
   return 'A character looks mistyped or missing: the code’s last character, its check, does not match. Compare it with the original.';
 }
+function clearCode(code) { form.code = code; form.codeBad = false; form.report = null; form.gotd = null; form.note = ''; }   // the lines changed: the code box follows them
 function loadCode(code) { const g = decodeGame(code); if (!g) return false; const pz = buildPuzzle(g.pids, g.masks); form.rows = rowsOf(pz); form.code = pz.gid; form.codeBad = false; form.show = false; form.report = { pz }; form.gotd = null; form.note = ''; form.rival = null; return true; }
 // The code box also takes a friend's pasted summary: their game, with their score to beat.
 function gotdModes(date, gid) {   // which mode set, if any, makes this code the game of that day: 'mine', a description, or null
@@ -505,15 +509,16 @@ function bankHtml() {
     + '</optgroup><optgroup label="Turing Machine manual (legacy pack)">' + TMMETA.map(g => row(g, 't', 'Game ' + (g.i + 1))).join('') + '</optgroup>';
 }
 
+function gameRow(s, what, cls, label, attr) {   // a saved game: its code, its day, how far it got, and a button
+  const d = new Date(s.startedAt), day = s.gotd ? 'Game of the day ' + s.gotd : isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return '<div class="start recent"><div class="recinfo"><span class="code">' + esc(s.gid) + '</span><span>' + esc(day + ' \u00b7 ' + what) + '</span></div><button class="' + cls + '" data-act="recent" data-id="' + esc(gameId(s)) + '"' + attr + '>' + label + '</button></div>';
+}
 function modesWord() { const on = MODES.filter(m => MODE[m[0]]).length; return 'Game modes (' + (on === 3 ? 'all three on' : on + ' of 3 on') + ')'; }
 function renderSetup() {
   let h = '<header class="top"><h1>' + TITLE + '</h1></header>';
   if (askInstall()) h += '<div class="install"><span>Add ' + TITLE + ' to your home screen? It opens like an app and works offline.</span><button class="primary" data-act="inst-yes" data-fk="instyes">Yes</button><button class="ghost" data-act="inst-no" data-fk="instno">No</button></div>';
   const cont = continueGame();
-  if (cont) {   // the one place to resume: the game open now, or else the newest unfinished one
-    const d = new Date(cont.startedAt), day = isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    h += '<section class="setup"><div class="lbl">Continue</div><div class="start recent"><div class="recinfo"><span class="code">' + esc(cont.gid) + '</span><span>' + esc((cont.gotd ? 'Game of the day ' + cont.gotd : day) + ' \u00b7 turn ' + (cont.turns + 1)) + '</span></div><button class="primary" data-act="recent" data-id="' + esc(gameId(cont)) + '" data-fk="cont">Resume</button></div></section>';
-  }
+  if (cont) h += '<section class="setup"><div class="lbl">Continue</div>' + gameRow(cont, 'turn ' + (cont.turns + 1), 'primary', 'Resume', ' data-fk="cont"') + '</section>';   // the one place to resume: the game open now, or else the newest unfinished one
   if (newcomer()) {
     const seen = !!LS.get('tut-seen');
     h += '<section class="setup"><div class="lbl">New here?</div><p class="newbie">How to play takes about three minutes. Then try a small first puzzle with four cards.' + (STANDALONE && IOS ? ' Moved from Safari? Bring your games with \u201cPaste a table or saved games\u201d below.' : '') + '</p>';
@@ -532,11 +537,7 @@ function renderSetup() {
   h += '<span class="res' + (form.codeBad ? ' bad' : '') + '" id="codemsg">' + (form.codeBad ? esc(codeProblem(form.code)) : '') + '</span><div id="report">' + reportHtml(false) + '</div>';
   const rec = recentGames().filter(s => !cont || gameId(s) !== gameId(cont));
   let recH = '';   // recent games go last, below Aids, so the rows that start a game stay together
-  if (rec.length) recH = '<div class="lbl">Recent games <span class="note">only the last ' + RECENT_MAX + ' are kept</span></div>' + rec.map(s => {
-    const d = new Date(s.startedAt), day = isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    const what = s.won ? 'won in ' + plural(s.turns, 'turn') : 'turn ' + (s.turns + 1) + ', in progress';
-    return '<div class="start recent"><div class="recinfo"><span class="code">' + esc(s.gid) + '</span><span>' + esc((s.gotd ? 'Game of the day ' + s.gotd : day) + ' \u00b7 ' + what) + '</span></div><button class="' + (s.won ? 'ghost' : 'primary') + '" data-act="recent" data-id="' + esc(gameId(s)) + '">' + (s.won ? 'Review' : 'Resume') + '</button></div>';
-  }).join('');
+  if (rec.length) recH = '<div class="lbl">Recent games <span class="note">only the last ' + RECENT_MAX + ' are kept</span></div>' + rec.map(s => s.won ? gameRow(s, 'won in ' + plural(s.turns, 'turn'), 'ghost', 'Review', '') : gameRow(s, 'turn ' + (s.turns + 1) + ', in progress', 'primary', 'Resume', '')).join('');
   h += '<div class="lbl">Continue or review a game</div><div class="start"><button class="foldsel" data-act="import" data-fk="import">' + (STANDALONE ? 'Paste a table or saved games' : 'Paste its exported table') + '</button></div>';
   h += '<div class="lbl">Build a puzzle</div><div class="start"><button class="foldsel" data-act="fold" data-f="fbuild" aria-expanded="' + !!form.fbuild + '">' + (form.fbuild ? '\u25be ' : '\u25b8 ') + 'Predicates and checkers</button></div>';
   if (form.fbuild) {
@@ -552,7 +553,7 @@ function renderSetup() {
 }
 function syncFromRows() {   // rows edited by hand: refresh row messages and the game code
   form.rows.forEach((r, i) => { const st = rowStatus(i), out = document.getElementById('res' + i), sel = document.getElementById('sel' + i), cur = resolvePred(r.p); if (out) { out.textContent = rowMsg(st); out.className = 'res' + (st.bad ? ' bad' : ''); } if (sel) sel.value = cur ? String(cur.id) : ''; });
-  const pz = formPuzzle(); form.code = pz ? pz.gid : ''; form.codeBad = false; form.report = null; form.gotd = null; form.note = '';
+  const pz = formPuzzle(); clearCode(pz ? pz.gid : '');
   const c = document.getElementById('code'); if (c) c.value = form.code;
   const m = document.getElementById('codemsg'); if (m) { m.textContent = ''; m.className = 'res'; }
   setReport();
@@ -576,7 +577,7 @@ function renderPlay() {
     h += '<div class="row hist' + (r.guess ? ' guess' : '') + '" role="group" aria-label="' + (r.guess ? 'Guess ' : 'Code ') + cs(r.code) + ': ' + said + '">';
     r.code.forEach((v, d) => { h += '<span class="c d" aria-hidden="true">' + v + (d === 2 && r.guess ? '<span class="dag" title="guess">' + DAG + '</span>' : '') + '</span>'; });
     for (let i = 0; i < n; i++) {
-      if (i in r.res) { const id = ri + ':' + i; h += '<span class="c" aria-hidden="true"><span class="r ' + (r.res[i] ? 't' : 'f') + (echo.has(id) ? ' echo' : '') + (contra.has(id) ? ' contra' : '') + '">' + (r.res[i] ? T : F_) + '</span></span>'; }
+      if (i in r.res) { const id = ri + ':' + i; h += '<span class="c" aria-hidden="true"><span class="r ' + (r.res[i] ? 't' : 'f') + (echo.has(id) ? ' echo' : '') + (contra.has(id) ? ' contra' : '') + '">' + tf(r.res[i]) + '</span></span>'; }
       else h += '<span class="c" aria-hidden="true"></span>';
     }
     h += '<span class="c" aria-hidden="true"></span></div>';
@@ -591,7 +592,7 @@ function renderPlay() {
     }
     for (let i = 0; i < n; i++) {
       h += '<div class="c tickwrap">';
-      if (i in kn) h += '<span class="r echo ' + (kn[i].val ? 't' : 'f') + '" title="already evaluated on this code"><span aria-hidden="true">' + (kn[i].val ? T : F_) + '</span><span class="sr">' + LET[i] + ' is already ' + (kn[i].val ? 'true' : 'false') + ' on this code</span></span>';
+      if (i in kn) h += '<span class="r echo ' + (kn[i].val ? 't' : 'f') + '" title="already evaluated on this code"><span aria-hidden="true">' + tf(kn[i].val) + '</span><span class="sr">' + LET[i] + ' is already ' + (kn[i].val ? 'true' : 'false') + ' on this code</span></span>';
       else { const on = S.ticks.includes(i); h += '<button class="box' + (ui.pending ? ' pending' : on ? ' on' : '') + '" data-act="tick" data-i="' + i + '" aria-pressed="' + (on || ui.pending) + '" aria-label="evaluate ' + LET[i] + '" data-fk="tick' + i + '">' + (on || ui.pending ? '✓' : '') + '</button>'; }
       h += '</div>';
     }
@@ -651,11 +652,17 @@ const TUTORIAL = '<h2>How to play</h2>'
   + '<p><b>Playing a friend\u2019s game.</b> Paste their summary into the Game code box. You get the same puzzle, and their score stays on screen to beat. Your own summary then says how you compared.</p>'
   + '<p><b>Passing a game on.</b> “Export table” works at any point in a game. “Continue or review a game” on the New puzzle screen loads one: an unfinished table continues from its last row, a finished one opens on its analysis. Worksheet marks do not travel, and an imported game says “Imported table” in its summary. The New puzzle screen lists your last ' + RECENT_MAX + ' games under Recent games; older ones are deleted, so export any game you want to keep.</p>';
 let opener = null;   // data-fk of the control that opened the dialog, so focus can go back to it
+// every dialog: its markup, what a click inside does, which control gets focus, and what Escape does (none: Escape is ignored)
+function openModal(html, onclick, focus, onEscape) {
+  modal.innerHTML = html; modal.hidden = false; modal.onclick = onclick; modal.onEscape = onEscape || null;
+  const f = modal.querySelector(focus); if (f) f.focus();
+}
 function closeModal() {
-  modal.hidden = true; modal.innerHTML = ''; modal.onclick = null;
+  modal.hidden = true; modal.innerHTML = ''; modal.onclick = null; modal.onEscape = null;
   const el = opener && document.querySelector('[data-fk="' + opener + '"]'); if (el && !el.disabled) el.focus({ preventScroll: true });
 }
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !modal.hidden && modal.onEscape) { modal.onEscape(); return; }
   if (e.key !== 'Tab' || modal.hidden) return;
   const f = Array.from(modal.querySelectorAll('button,textarea,input,select,[tabindex]')).filter(x => !x.disabled); if (!f.length) return;
   const i = f.indexOf(document.activeElement);
@@ -663,36 +670,28 @@ document.addEventListener('keydown', e => {
 });
 function ask(html, ok) {
   return new Promise(res => {
-    modal.innerHTML = '<div class="dlg" role="dialog" aria-modal="true"><p>' + html + '</p><div class="dlgb"><button class="ghost" data-m="0">Cancel</button><button class="primary" data-m="1">' + esc(ok) + '</button></div></div>';
-    modal.hidden = false;
-    const done = v => { document.removeEventListener('keydown', key); closeModal(); res(v); };
-    const key = e => { if (e.key === 'Escape') done(false); };
-    document.addEventListener('keydown', key);
-    modal.onclick = e => { const b = e.target.closest('[data-m]'); if (b) done(b.dataset.m === '1'); else if (e.target === modal) done(false); };
-    modal.querySelector('.primary').focus();
+    const done = v => { closeModal(); res(v); };
+    openModal('<div class="dlg" role="dialog" aria-modal="true"><p>' + html + '</p><div class="dlgb"><button class="ghost" data-m="0">Cancel</button><button class="primary" data-m="1">' + esc(ok) + '</button></div></div>',
+      e => { const b = e.target.closest('[data-m]'); if (b) done(b.dataset.m === '1'); else if (e.target === modal) done(false); }, '.primary', () => done(false));
   });
 }
 function showTutorial() {
   LS.set('tut-seen', '1');
-  modal.innerHTML = '<div class="dlg tut" role="dialog" aria-modal="true"><div class="tutbody">' + TUTORIAL + (SITE ? '<p class="fine"><button class="quiet" data-m="upd">Manually check for updates</button></p>' : '') + '</div><div class="dlgb"><button class="primary" data-m="0">Got it</button></div></div>';
-  modal.hidden = false;
-  const key = e => { if (e.key === 'Escape') { document.removeEventListener('keydown', key); closeModal(); } };
-  document.addEventListener('keydown', key);
-  modal.onclick = e => {
+  openModal('<div class="dlg tut" role="dialog" aria-modal="true"><div class="tutbody">' + TUTORIAL + (SITE ? '<p class="fine"><button class="quiet" data-m="upd">Manually check for updates</button></p>' : '') + '</div><div class="dlgb"><button class="primary" data-m="0">Got it</button></div></div>', e => {
     const b = e.target.closest('[data-m]'); if (b && b.dataset.m === 'upd') { const p = b.parentNode; p.textContent = ''; checkUpdate(p); return; }
-    if (b || e.target === modal) { document.removeEventListener('keydown', key); closeModal(); }
-  };
-  modal.querySelector('.primary').focus();
+    if (b || e.target === modal) closeModal();
+  }, '.primary', closeModal);
 }
 function showText(title, text) {
-  modal.innerHTML = '<div class="dlg" role="dialog" aria-modal="true"><p>' + esc(title) + '</p><textarea id="txtout" readonly></textarea><small id="txtnote"></small><div class="dlgb"><button class="ghost" data-m="0">Close</button><button class="primary" data-m="1">Copy</button></div></div>';
-  modal.querySelector('textarea').value = text; modal.hidden = false;
-  modal.onclick = e => { const b = e.target.closest('[data-m]'); if (b && b.dataset.m === '1') copy(text, modal.querySelector('#txtnote'), modal.querySelector('textarea')); else if (b || e.target === modal) closeModal(); };
-  modal.querySelector('.primary').focus();
+  openModal('<div class="dlg" role="dialog" aria-modal="true"><p>' + esc(title) + '</p><textarea id="txtout" readonly></textarea><small id="txtnote"></small><div class="dlgb"><button class="ghost" data-m="0">Close</button><button class="primary" data-m="1">Copy</button></div></div>',
+    e => { const b = e.target.closest('[data-m]'); if (b && b.dataset.m === '1') copyInDialog(text, modal.querySelector('textarea')); else if (b || e.target === modal) closeModal(); }, '.primary');
+  modal.querySelector('textarea').value = text;
 }
-function copy(text, noteEl, area) {
-  const fail = () => { if (area) { area.focus(); area.select(); } if (noteEl) noteEl.textContent = 'Copying is blocked here. The text is selected; copy it by hand.'; };
-  try { navigator.clipboard.writeText(text).then(() => { if (noteEl) noteEl.textContent = 'Copied.'; }, fail); } catch (e) { fail(); }
+// copy to the clipboard; resolves to whether it worked
+function copy(text) { try { return navigator.clipboard.writeText(text).then(() => true, () => false); } catch (e) { return Promise.resolve(false); } }
+function copyInDialog(text, area) {   // reports in the dialog's note; if copying is blocked, selects the text to copy by hand
+  const note = modal.querySelector('#txtnote');
+  copy(text).then(ok => { if (!ok && area) { area.focus(); area.select(); } if (note) note.textContent = ok ? 'Copied.' : 'Copying is blocked here. The text is selected; copy it by hand.'; });
 }
 const STATE_WORD = ['', ', crossed out', ', circled'];
 // screen readers hear messages through one region that is never rebuilt
@@ -760,7 +759,7 @@ app.addEventListener('click', async e => {
   else if (a === 'export') { render(); showText('Truth table' + (S.won ? '' : ' so far') + '. Spoiler: it contains every code you tried. Anyone can load it with \u201cContinue or review a game\u201d on the New puzzle screen. Settings line: ' + SETTINGS_KEY, exportText()); }
   else if (a === 'import') showImport();
   else if (a === 'recent') { const s = readGame(b.dataset.id); if (s && resume(s)) { ui.step = null; ui.hint = false; LS.set('last', gameId(s)); } render(); }
-  else if (a === 'copyshare') { const note = { set textContent(v) { say(v === 'Copied.' ? 'Summary copied.' : 'Copying is blocked here. Select the summary text and copy it by hand.'); render(); } }; copy(shareText(verdict()), note, null); }
+  else if (a === 'copyshare') { copy(shareText(verdict())).then(ok => { say(ok ? 'Summary copied.' : 'Copying is blocked here. Select the summary text and copy it by hand.'); render(); }); }
   else if (a === 'restart') { render(); if (await ask('Restart this puzzle? Your table and marks will be cleared.', 'Restart')) startGame(P, S.showCount, true, S.gotd); }
   else if (a === 'again') startGame(P, S.showCount, true, S.gotd);
   else if (a === 'setup') { view = 'setup'; render(); }
@@ -769,7 +768,7 @@ app.addEventListener('click', async e => {
   else if (a === 'check') { form.show = false; checkForm(); setReport(); }
   else if (a === 'count') { if (await ask('Show how many solutions this puzzle has? You can also play without knowing.', 'Show count')) { form.show = true; render(); } }
   else if (a === 'play') { const pz = form.report && form.report.pz; if (pz && pz.solutions > 0) { const rv = form.rival && form.rival.gid === pz.gid ? form.rival : null; startGame(pz, form.show, false, form.gotd && form.gotd.gid === pz.gid ? form.gotd.date : null); if (rv) { S.rival = rv; save(); render(); } } }
-  else if (a === 'theme') { THEME = b.dataset.v; try { localStorage.setItem(KEY + ':theme', THEME); } catch (e) {} applyTheme(); render(); }
+  else if (a === 'theme') { THEME = b.dataset.v; LS.set('theme', THEME); applyTheme(); render(); }
   else if (a === 'fold') { form[b.dataset.f] = !form[b.dataset.f]; render(); }
   else if (a === 'inst-no') { LS.set('install-no', '1'); render(); }
   else if (a === 'inst-yes') { LS.set('install-yes', '1'); showInstall(); }
@@ -783,7 +782,7 @@ app.addEventListener('click', async e => {
   else if (a === 'rand-preds') {
     const k = Math.max(2, Math.min(8, form.rows.length)), g = randomPuzzle(k, wantFromModes(Math.random), Math.random);
     if (!g) form.report = { error: 'No puzzle turned up with these modes and this many predicates. Try again, or change them.' };
-    else { form.rows = g.pids.map(p => ({ p: String(p), k: '' })); form.code = ''; form.codeBad = false; form.report = null; form.gotd = null; form.note = ''; }
+    else { form.rows = g.pids.map(p => ({ p: String(p), k: '' })); clearCode(''); }
     render();
   }
   else if (a === 'rand-active') {
@@ -814,15 +813,17 @@ app.addEventListener('paste', e => {
 });
 app.addEventListener('change', e => {
   const id = e.target.id;
-  if (id === 'hl') { HL = e.target.checked; setPref('hl', HL); if (view === 'play') { noteAids(); save(); render(); } else { const f = document.getElementById('aidsfold'); if (f) f.textContent = '\u25be ' + aidsWord(); } }
-  else if (id === 'work') { WORK = e.target.checked; setPref('work', WORK); if (view === 'play') { noteAids(); save(); render(); } else { const f = document.getElementById('aidsfold'); if (f) f.textContent = '\u25be ' + aidsWord(); } }
+  if (id === 'hl' || id === 'work') {
+    if (id === 'hl') HL = e.target.checked; else WORK = e.target.checked; LS.setFlag(id, e.target.checked);
+    if (view === 'play') { noteAids(); save(); render(); } else { const f = document.getElementById('aidsfold'); if (f) f.textContent = '\u25be ' + aidsWord(); }
+  }
   else if (id === 'gdate') form.gdate = e.target.value;
   else if (e.target.dataset && e.target.dataset.sel !== undefined) {   // predicate picked from the list: its old checker no longer applies
     const i = +e.target.dataset.sel; form.rows[i] = { p: e.target.value, k: '' }; syncFromRows(); document.getElementById('rows').innerHTML = rowsHtml();
     const k = document.getElementById('k' + i); if (k && e.target.value) k.focus();
   }
   else if (id.indexOf('mode-') === 0) {
-    const k = id.slice(5), m = MODES.find(x => x[0] === k); MODE[k] = e.target.checked; setPref('m-' + k, MODE[k]);
+    const k = id.slice(5), m = MODES.find(x => x[0] === k); MODE[k] = e.target.checked; LS.setFlag('m-' + k, MODE[k]);
     document.getElementById('modetxt-' + k).textContent = (MODE[k] ? 'Do not show' : 'Show') + m[2];
     { const bk = document.getElementById('bank'); if (bk) bk.innerHTML = bankHtml(); } setReport(); { const fb = document.querySelector('[data-f="fmodes"]'); if (fb) fb.textContent = '\u25be ' + modesWord(); }
   }
@@ -892,16 +893,13 @@ function showInstall() {
     body += installEvent ? '<p>Tap <b>Install</b> below, then confirm.</p>' : '<ol><li>Open your browser\u2019s menu (<b>\u22ee</b>).</li><li>Choose <b>Install app</b> or <b>Add to Home screen</b>.</li><li>Confirm.</li></ol>';
     body += '<p>It opens like an app and works offline. In Chrome, your saved games come along.</p>';
   }
-  modal.innerHTML = '<div class="dlg tut" role="dialog" aria-modal="true"><div class="tutbody">' + body + '</div><small id="txtnote"></small><div class="dlgb">'
-    + (IOS && games ? '<button class="ghost" data-m="copy">Copy my games</button>' : '') + (!IOS && installEvent ? '<button class="ghost" data-m="0">Not now</button><button class="primary" data-m="inst">Install</button>' : '<button class="primary" data-m="0">Done</button>') + '</div></div>';
-  modal.hidden = false;
-  modal.onclick = async e => {
+  openModal('<div class="dlg tut" role="dialog" aria-modal="true"><div class="tutbody">' + body + '</div><small id="txtnote"></small><div class="dlgb">'
+    + (IOS && games ? '<button class="ghost" data-m="copy">Copy my games</button>' : '') + (!IOS && installEvent ? '<button class="ghost" data-m="0">Not now</button><button class="primary" data-m="inst">Install</button>' : '<button class="primary" data-m="0">Done</button>') + '</div></div>', async e => {
     const b = e.target.closest('[data-m]'); if (!b) { if (e.target === modal) { closeModal(); render(); } return; }
-    if (b.dataset.m === 'copy') { copy(savesText(), modal.querySelector('#txtnote')); return; }
+    if (b.dataset.m === 'copy') { copyInDialog(savesText(), null); return; }
     if (b.dataset.m === 'inst' && installEvent) { const ev = installEvent; installEvent = null; try { await ev.prompt(); } catch (err) {} }
     closeModal(); render();
-  };
-  modal.querySelector('.primary, .ghost').focus();
+  }, '.primary, .ghost');
 }
 async function checkUpdate(el) {   // reached only from the very end of How to play
   el.textContent = 'Checking\u2026';
