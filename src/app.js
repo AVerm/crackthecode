@@ -209,7 +209,7 @@ function startGame(pz, showCount, forceNew, gotd) {
   if (showCount) S.showCount = true; noteAids();
   resetUi(); view = 'play'; save(); render();
 }
-function resume(state) { try { P = buildPuzzle(state.def.p, state.def.m); S = state; noteAids(); view = 'play'; ui.msg = ''; ui.bad = false; ui.pending = false; return true; } catch (e) { return false; } }
+function resume(state) { try { P = buildPuzzle(state.def.p, state.def.m); S = state; noteAids(); view = 'play'; resetUi(); return true; } catch (e) { return false; } }
 
 // ---------- play helpers ----------
 function known(c) { const m = {}, key = cs(c); S.rows.forEach((r, ri) => { if (cs(r.code) === key) for (const i in r.res) if (!(i in m)) m[i] = { val: r.res[i], row: ri }; }); return m; }
@@ -767,9 +767,9 @@ const TUTORIAL = '<h2>How to play</h2>'
   + '<p><b>Playing a friend\u2019s game.</b> Paste their summary into the Game code box. You get the same puzzle, and their score stays on screen to beat. Your own summary then says how you compared.</p>'
   + '<p><b>Passing a game on.</b> “Export table” works at any point in a game. “Continue or review a game” on the New puzzle screen loads one: an unfinished table continues from its last row, a finished one opens on its analysis. Worksheet marks do not travel, and an imported game says “Imported table” in its summary. The New puzzle screen lists your last ' + RECENT_MAX + ' games under Recent games; older ones are deleted, so export any game you want to keep.</p>';
 let opener = null;   // data-fk of the control that opened the dialog, so focus can go back to it
-// every dialog: its markup, what a click inside does, which control gets focus, and what Escape does (none: Escape is ignored)
+// every dialog: its markup, what a click inside does, which control gets focus, and what Escape does (by default, close it)
 function openModal(html, onclick, focus, onEscape) {
-  modal.innerHTML = html; modal.hidden = false; modal.onclick = onclick; modal.onEscape = onEscape || null;
+  modal.innerHTML = html; modal.hidden = false; modal.onclick = onclick; modal.onEscape = onEscape || closeModal;
   const f = modal.querySelector(focus); if (f) f.focus();
 }
 function closeModal() {
@@ -917,7 +917,7 @@ const ACTIONS = {
     if (rv) { S.rival = rv; save(); render(); }
   },
   count: async () => { if (await ask('Show how many solutions this puzzle has? You can also play without knowing.', 'Show count')) { form.show = true; render(); } },
-  recent: b => { const s = readGame(b.dataset.id); if (s && resume(s)) { ui.step = null; ui.hint = false; LS.set('last', gameId(s)); } render(); },
+  recent: b => { const s = readGame(b.dataset.id); if (s && resume(s)) LS.set('last', gameId(s)); render(); },
   import: () => showImport(),
   fold: b => { form[b.dataset.f] = !form[b.dataset.f]; render(); },
   add: () => { if (form.rows.length < 8) form.rows.push({ p: '', k: '' }); form.report = null; form.code = ''; render(); },
@@ -1042,12 +1042,13 @@ function showInstall() {
     if (b.dataset.m === 'copy') { copyInDialog(savesText(), null); return; }
     if (b.dataset.m === 'inst' && installEvent) { const ev = installEvent; installEvent = null; try { await ev.prompt(); } catch (err) {} }
     closeModal(); render();
-  }, '.primary, .ghost');
+  }, '.primary, .ghost', () => { closeModal(); render(); });
 }
+const BUILD_RE = /const BUILD = "([0-9a-f]{8})"/;   // how the site's page names its build: written by build.py, checked by test.js
 async function checkUpdate(el) {   // reached only from the very end of How to play
   el.textContent = 'Checking\u2026';
   try {
-    const r = await fetch('./?check=' + Date.now(), { cache: 'no-store' }), m = (await r.text()).match(/const BUILD = "([0-9a-f]{8})"/);
+    const r = await fetch('./?check=' + Date.now(), { cache: 'no-store' }), m = (await r.text()).match(BUILD_RE);
     if (!r.ok || !m) throw new Error('no build');
     if (m[1] === BUILD) { el.textContent = 'You have the latest version (' + BUILD + ').'; return; }
     el.textContent = 'Updating\u2026';

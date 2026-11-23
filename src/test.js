@@ -149,5 +149,14 @@ const src = page.slice(page.indexOf('<script>') + 8, page.lastIndexOf('</script>
     console.log('saved games moved', n1, 'of', ids.length, '| order kept', same, '| second paste adds', n2, '| text', text.length, 'chars');
   }
   view = 'setup'; renderSetup(); showTutorial;
+  // 9. the update check finds this page's build in the page as served, and sees a different one as an update
+  (async () => {
+    const realFetch = globalThis.fetch, check = async html => { globalThis.fetch = async () => ({ ok: true, text: async () => html }); const el = { textContent: '' }; await checkUpdate(el); return el.textContent; };
+    const same = await check(__page), other = await check(__page.replace(BUILD_RE, 'const BUILD = "00000000"'));
+    globalThis.fetch = realFetch;
+    const ok = same === 'You have the latest version (' + BUILD + ').' && other === 'Updating\u2026';
+    console.log('update check: same build', JSON.stringify(same), '| other build', JSON.stringify(other)); if (!ok) fail('update check');
+  })();
 })();`;
+global.__page = page;
 require('vm').runInThisContext(src, { filename: 'app.js' });
