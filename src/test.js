@@ -24,6 +24,10 @@ const src = page.slice(page.indexOf('<script>') + 8, page.lastIndexOf('</script>
     tried++; const d = decodeGame(bad); if (!d) rejected++;
   }
   console.log('code round trips ok; single-character typos rejected:', rejected, 'of', tried);
+  // the Turing Machine numbers decoded in the page match the source table exactly
+  { const want = (${fs.readFileSync(require('path').join(__dirname, 'tm_compat.json'), 'utf8')}).numbers, got = TM.numbers;
+    const bad = Object.keys(want).filter(k => got[k] !== want[k]).length + Object.keys(got).filter(k => !(k in want)).length;
+    console.log('TM numbers decoded:', Object.keys(got).length, '| mismatches', bad); if (bad) fail('TM numbers decode'); }
   // 2. TM entry and two-way form
   form.rows = [6, 17, 11, 19, 36].map((n, i) => ({ p: String(n), k: String([481, 618, 723, 315, 582][i]) })); const tmz = formPuzzle();
   console.log('TM entry -> game', tmz.gid, 'solutions', tmz.solutions); if (tmz.solutions !== 1 || !loadCode(tmz.gid) || formPuzzle().gid !== tmz.gid) fail('TM/code two-way');

@@ -71,6 +71,19 @@ function decodeGame(str) {
 }
 
 // ---------- puzzle construction ----------
+// Turing Machine verification numbers, decoded from build.py's tm_pack: which numbers are used (one bit each, in hex);
+// in order they alternate between a rising and a falling sequence, except at the listed breaks; and the k-th pair of
+// the rising sequence and the k-th pair of the falling one, from the top, are on the same card
+function tmNumbers(p) {
+  const used = [], up = [], down = [], out = {};
+  for (let i = 0; i < p.used.length * 4; i++) if (parseInt(p.used[i >> 2], 16) >> (i & 3) & 1) used.push(p.from + i);
+  used.forEach((n, r) => ((r % 2 === 0) !== p.breaks.includes(n) ? up : down).push(n));
+  down.reverse();
+  const card = r => parseInt(p.cards.substr((r >> 1) * 2, 2), 16);
+  up.forEach((n, r) => { out[n] = card(r); }); down.forEach((n, r) => { out[n] = card(r); });
+  return out;
+}
+TM.numbers = tmNumbers(TM.pack);
 function resolvePred(str) {
   const s = String(str).trim(); if (!/^\d+$/.test(s)) return null; const n = +s;
   if (PRED[n]) return { id: n, via: null };
