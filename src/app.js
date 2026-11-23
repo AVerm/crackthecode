@@ -1,6 +1,6 @@
 const LET = ['P','Q','R','S','T','U','V','W'], DIG = ['x','y','z'];
 const T = '⊤', F_ = '⊥', DAG = '†', DOT = '·', TITLE = 'Crack the Code!';
-const KEY = 'ctc-v3', OLDKEY = 'ctc-v2';
+const KEY = 'ctc-v3';
 const A32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ', CODE_VERSION = '1', NPRED_V1 = 95, PID0 = 101;
 const app = document.getElementById('app'), modal = document.getElementById('modal');
 
@@ -168,7 +168,7 @@ const RECENT_MAX = 5, LS = {
   del(k) { try { localStorage.removeItem(KEY + ':' + k); } catch (e) {} } };
 const gameId = s => s.id || (s.id = s.gid + '@' + s.startedAt);
 function readGame(id) { try { const s = JSON.parse(LS.get('g:' + id) || 'null'); if (s && s.v === 3 && s.def && gameId(s) === id) return s; } catch (e) {} return null; }
-function recentIds() { migrateSaves(); try { const a = JSON.parse(LS.get('recent') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function recentIds() { try { const a = JSON.parse(LS.get('recent') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
 function recentGames() { return recentIds().map(readGame).filter(Boolean); }
 // first-time help: one-time tips, the first-visit block on the setup screen, and a small first puzzle
 function tipOnce(name, msg) { if (LS.get('tip-' + name)) return ''; LS.set('tip-' + name, '1'); return msg; }
@@ -182,27 +182,7 @@ function save() {
   if (was && was !== id && !ids.includes(was)) LS.del('g:' + was);   // an untouched game you walked away from
   LS.set('g:' + id, JSON.stringify(S)); LS.set('last', id);
 }
-// Before this list existed, every game was kept under its game code. Keep the newest five of those and delete the rest.
-function migrateSaves() {
-  if (LS.get('recent') !== null) return;
-  const old = [], keys = []; try { for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i)); } catch (e) {}
-  keys.forEach(k => { if (!k || k.indexOf(KEY + ':') !== 0) return; const rest = k.slice(KEY.length + 1); if (!decodeGame(rest)) return;
-    try { const s = JSON.parse(localStorage.getItem(k)); if (s && s.v === 3 && s.def && s.gid === rest) old.push(s); } catch (e) {} LS.del(rest); });
-  const lastGid = LS.get('last'), when = s => (s.gid === lastGid ? 1e15 : 0) + (s.finishedAt || s.startedAt || 0);
-  old.sort((a, b) => when(b) - when(a));
-  const keep = old.filter(s => s.rows && s.rows.length).slice(0, RECENT_MAX);
-  keep.forEach(s => LS.set('g:' + gameId(s), JSON.stringify(s)));
-  LS.set('recent', JSON.stringify(keep.map(gameId)));
-  const cur = old.find(s => s.gid === lastGid); if (cur) { if (!keep.includes(cur)) LS.set('g:' + gameId(cur), JSON.stringify(cur)); LS.set('last', gameId(cur)); } else LS.del('last');
-}
-function lastState() {
-  try {
-    migrateSaves(); const g = LS.get('last'); if (g) return readGame(g);
-    const og = localStorage.getItem(OLDKEY + ':last'), o = og ? JSON.parse(localStorage.getItem(OLDKEY + ':' + og) || 'null') : null;   // carry over a game saved before game codes existed
-    if (o && o.def && o.def.c) { const m = o.def.p.map((pid, i) => 1 << PRED[pid].o.findIndex(x => x[1] === o.def.c[i])), pz = buildPuzzle(o.def.p, m); o.v = 3; o.gid = pz.gid; o.def = pz.def; return o; }
-  } catch (e) {}
-  return null;
-}
+function lastState() { const g = LS.get('last'); return g ? readGame(g) : null; }
 function fresh(pz, showCount, gotd) {
   const at = Date.now();
   return { v: 3, id: pz.gid + '@' + at, gid: pz.gid, def: pz.def, gotd: gotd || null, aids: { w: false, h: false }, showCount: !!showCount, startedAt: at, finishedAt: null, dial: [1, 1, 1], ticks: [], rows: [],
@@ -479,9 +459,9 @@ function loadEntry(text) {   // returns false, or 'code' | 'summary'
 function rivalDiff() { return S.turns - S.rival.turns || S.evals - S.rival.evals; }
 function rivalWord(r) { return plural(r.turns, 'turn') + ', ' + plural(r.evals, 'evaluation') + (r.wrong ? ', ' + plural(r.wrong, 'wrong guess', 'wrong guesses') : '') + (r.hint ? ', with a hint' : ''); }
 const MODES = [
-  ['single', 'One secret option per predicate?', ' games where a predicate has more than one secret option', 'Do not show', 'Show'],
-  ['excl', 'Exclusive predicates only?', ' games where the secret code fits more than one listed option on a card', 'Do not show', 'Show'],
-  ['uniq', 'Unique answers only?', ' games with multiple answers', 'Do not show', 'Show']];
+  ['single', 'One secret option per predicate?', ' games where a predicate has more than one secret option'],
+  ['excl', 'Exclusive predicates only?', ' games where the secret code fits more than one listed option on a card'],
+  ['uniq', 'Unique answers only?', ' games with multiple answers']];
 function optsHtml() {
   return '<div class="opts"><label class="opt"><input type="checkbox" id="work" data-fk="work"' + (WORK ? ' checked' : '') + '><span>Workbook does work: a circled digit crosses out the rest of its column' + (!P || P.singleOption || view !== 'play' ? ', and a circled option crosses out the rest of its card' : '') + (view !== 'play' ? ' (options only when each predicate has one secret option)' : '') + '</span></label>'
     + '<label class="opt"><input type="checkbox" id="hl" data-fk="hl"' + (HL ? ' checked' : '') + '><span>Highlight the options the current code satisfies</span></label>'
@@ -544,7 +524,7 @@ function renderSetup() {
   h += '<div class="lbl">Game of the day</div><div class="start"><input type="date" id="gdate" aria-label="Day" value="' + esc(form.gdate || todayStr()) + '"><button class="primary" data-act="gotd-play">Play</button></div>';
   h += '<div class="lbl">Random game</div><div class="start"><button class="foldsel" data-act="fold" data-f="fmodes" aria-expanded="' + !!form.fmodes + '">' + (form.fmodes ? '▾ ' : '▸ ') + modesWord() + '</button><button class="primary" data-act="rand-play">Play</button></div>';
   if (form.fmodes) {
-    h += '<div class="opts">' + MODES.map(m => '<label class="opt"><input type="checkbox" id="mode-' + m[0] + '"' + (MODE[m[0]] ? ' checked' : '') + '><span><b>' + m[1] + '</b> <span id="modetxt-' + m[0] + '">' + (MODE[m[0]] ? m[3] : m[4]) + m[2] + '</span></span></label>').join('') + '</div>';
+    h += '<div class="opts">' + MODES.map(m => '<label class="opt"><input type="checkbox" id="mode-' + m[0] + '"' + (MODE[m[0]] ? ' checked' : '') + '><span><b>' + m[1] + '</b> <span id="modetxt-' + m[0] + '">' + (MODE[m[0]] ? 'Do not show' : 'Show') + m[2] + '</span></span></label>').join('') + '</div>';
     h += '<p class="hint">A checked mode is guaranteed; an unchecked one is left to chance. The modes also decide which game of the day you get, which starter puzzles the list shows, and what the New buttons make.</p>';
   }
   h += '<div class="lbl">Game code</div><div class="start"><input id="code" aria-label="Game code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="a code, or a friend’s summary" value="' + esc(form.code) + '"><button class="primary" id="codeplay" data-act="play"' + (canPlay() ? '' : ' disabled') + '>Play</button></div>';   // always Play: Resume lives only in the Continue row, and Play on a puzzle partway through picks up where it left off
@@ -586,8 +566,8 @@ function renderPlay() {
   const canEval = !S.won && eff.length >= 1 && eff.length <= 3, canKnow = !S.won && eff.length === 0;
   let h = '<header class="top"><h1>' + TITLE + '</h1><div class="tools"><button class="ghost" data-act="tutorial" data-fk="tut">How to play</button>' + (S.won ? '' : '<button class="ghost" data-act="hint" data-fk="hint">' + (ui.hint ? 'Hide hint' : 'Hint') + '</button>')
     + (S.won ? '<button class="ghost" data-act="export" data-fk="export">Export table</button><button class="ghost" data-act="setup" data-fk="setup">New puzzle</button>' :   // a finished game has only two of these, so they need no menu
-    '<div class="menuwrap"><button class="ghost more" data-act="menu" data-fk="menu" aria-haspopup="true" aria-expanded="' + !!ui.menu + '" aria-label="More: export, ' + (S.won ? '' : 'restart, ') + 'new puzzle">\u22ef</button>'
-    + (ui.menu ? '<div class="menu" role="menu"><button role="menuitem" data-act="export" data-fk="export">Export table</button>' + (S.won ? '' : '<button role="menuitem" data-act="restart" data-fk="restart">Restart this puzzle</button>') + '<button role="menuitem" data-act="setup" data-fk="setup">New puzzle</button></div>' : '') + '</div>') + '</div>';
+    '<div class="menuwrap"><button class="ghost more" data-act="menu" data-fk="menu" aria-haspopup="true" aria-expanded="' + !!ui.menu + '" aria-label="More: export, restart, new puzzle">\u22ef</button>'
+    + (ui.menu ? '<div class="menu" role="menu"><button role="menuitem" data-act="export" data-fk="export">Export table</button><button role="menuitem" data-act="restart" data-fk="restart">Restart this puzzle</button><button role="menuitem" data-act="setup" data-fk="setup">New puzzle</button></div>' : '') + '</div>') + '</div>';
   h += '<div class="meta"><span><span class="lbl">Game</span> <b>' + P.gid + '</b></span>' + (S.gotd ? '<span><span class="lbl">Game of the day</span> <b>' + esc(S.gotd) + '</b></span>' : '') + '<span><span class="lbl">' + (S.won ? 'Turns</span> <b>' + S.turns : 'Turn</span> <b>' + (S.turns + 1)) + '</b></span><span><span class="lbl">Evaluations</span> <b>' + S.evals + '</b></span>' + (S.rival ? '<span class="rival"><span class="lbl">Friend</span> <b>' + rivalWord(S.rival) + '</b></span>' : '') + '</div></header>';
   h += '<section class="facts"><div class="lbl">Puzzle facts</div><p>' + (P.solutions === 1 ? 'One solution' : S.showCount ? P.solutions + ' solutions' : 'More than one solution') + '</p><p>' + (P.singleOption ? 'One secret option per predicate' : 'Some predicates have more than one secret option') + '</p><p>' + (P.overlap ? 'The answer fits more than one listed option on at least one predicate' : 'The answer fits exactly one listed option on every predicate') + '</p></section>';
   h += '<section class="board" style="--n:' + n + '" aria-label="Truth table"><div class="lbl">Truth table</div><div class="row head" aria-hidden="true">' + DIG.map(d => '<span class="c">' + d + '</span>').join('') + LET.slice(0, n).map((l, i) => '<span class="c"><button class="jump" data-act="tocard" data-i="' + i + '" id="col' + i + '" tabindex="-1">' + l + '</button></span>').join('') + '<span class="c"></span></div>';
@@ -843,7 +823,7 @@ app.addEventListener('change', e => {
   }
   else if (id.indexOf('mode-') === 0) {
     const k = id.slice(5), m = MODES.find(x => x[0] === k); MODE[k] = e.target.checked; setPref('m-' + k, MODE[k]);
-    document.getElementById('modetxt-' + k).textContent = (MODE[k] ? m[3] : m[4]) + m[2];
+    document.getElementById('modetxt-' + k).textContent = (MODE[k] ? 'Do not show' : 'Show') + m[2];
     { const bk = document.getElementById('bank'); if (bk) bk.innerHTML = bankHtml(); } setReport(); { const fb = document.querySelector('[data-f="fmodes"]'); if (fb) fb.textContent = '\u25be ' + modesWord(); }
   }
   else if (id === 'bank' && e.target.value !== '') { const v = e.target.value; loadCode((v[0] === 't' ? TMBANK : BANK)[+v.slice(1)]); render(); }
@@ -936,11 +916,9 @@ async function checkUpdate(el) {   // reached only from the very end of How to p
   } catch (e) { el.textContent = 'Could not reach the site. Try again when you are online.'; }
 }
 
-function start(data) {
-  const given = data && data.S && data.S.v === 3 ? data.S : null, last = given || lastState();
+function start() {
+  const last = lastState();
   if (!(last && resume(last))) view = 'setup';
   render();
 }
-const hot = window.claude && window.claude.hot;
-if (hot && hot.snapshot) hot.snapshot(() => ({ S }));
-if (hot && hot.ready) hot.ready(start); else start((hot && hot.data) || {});
+start();

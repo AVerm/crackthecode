@@ -86,9 +86,6 @@ const src = page.slice(page.indexOf('<script>') + 8, page.lastIndexOf('</script>
   }
   MODE.single = MODE.excl = MODE.uniq = true;
   console.log('game of the day: 960 date and mode pairs,', bad, 'problems,', codes.size, 'distinct games | slowest ms', gw.toFixed(0), '| 2026-11-15 all modes on:', (g => fmtCode(encodeGame(g.pids, g.masks)))(gameOfDay('2026-11-15')));
-  // 5. old save carries over
-  __store['ctc-v2:last'] = 'OLD'; __store['ctc-v2:OLD'] = JSON.stringify({ v: 2, gid: 'OLD', def: { p: [137, 141, 145, 190], c: [NUM2CARD[2386], NUM2CARD[2172], NUM2CARD[4009], NUM2CARD[1361]] }, rows: [], marks: { d: [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]], o: [[0,0,0],[0,0,0],[0,0,0],[0,0,0]] }, dial: [1,1,1], ticks: [], turns: 0, evals: 0, wrong: 0, contra: [], won: false, startedAt: 1 });
-  delete __store['ctc-v3:last']; const o = lastState(); console.log('old save migrates to game', o && o.gid, '| decodes:', !!(o && decodeGame(o.gid)));
   console.log('manual pack', TMMETA.length, '| one solution', TMMETA.filter(g => g.solutions === 1).length, '| single-active', TMMETA.filter(g => g.single).length, '| exclusive', TMMETA.filter(g => !g.overlap).length, '| sizes', TMMETA.map(g => g.n).join(''));
   console.log('starter per mode set', [0,1,2,3,4,5,6,7].map(m => BANKMETA.filter(g => g.single === !(m & 4) && g.overlap === !!(m & 2) && (g.solutions === 1) === !(m & 1)).length).join(' '));
   // 6. export then import gives the same game back, partial or finished; damaged tables are refused
@@ -127,7 +124,7 @@ const src = page.slice(page.indexOf('<script>') + 8, page.lastIndexOf('</script>
     if (clash || !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 || loadEntry('hello 12')) fail('code box entry ' + [clash, ok1, ok2, ok3, ok4, ok5]);
     console.log('code box: dates from 2000 on that are also codes', clash, '| earlier dates', old, '| kinds', k1, k2, k3, k4, k5);
   }
-  // 8. recent games: five kept, replays get their own entry, old per-code saves migrate
+  // 8. recent games: five kept, replays get their own entry
   { const games = Object.keys(__store).filter(k => k.indexOf('ctc-v3:') === 0); games.forEach(k => delete __store[k]);
     const codes = BANK.slice(0, 7).map(c => buildPuzzle(decodeGame(c).pids, decodeGame(c).masks)), play1 = () => { S.rows.push({ code: [1, 1, 1], res: { 0: predVal(0, [1, 1, 1]) }, guess: false, fresh: [0] }); S.turns++; S.evals++; save(); };
     let clock = 1000; const realNow = Date.now; Date.now = () => (clock += 1000);
@@ -138,14 +135,10 @@ const src = page.slice(page.indexOf('<script>') + 8, page.lastIndexOf('</script>
     const top = recentGames()[0]; resume(top); S.won = true; save(); startGame(P, false, false); play1();   // replaying a finished code adds a game
     const replay = recentGames().filter(s => s.gid === top.gid).length === 2;
     startGame(codes[6], false, false); const resumed = S.rows.length === 1;   // an unfinished game is resumed, not restarted
-    Object.keys(__store).filter(k => k.indexOf('ctc-v3:') === 0).forEach(k => delete __store[k]);
-    codes.forEach((pz, i) => { const s = fresh(pz, false, null); s.startedAt = 5000 + i; delete s.id; if (i !== 3) s.rows.push({ code: [1, 1, 1], res: {}, guess: false, fresh: [] }); __store['ctc-v3:' + pz.gid] = JSON.stringify(s); });
-    __store['ctc-v3:last'] = codes[2].gid; __store['ctc-v3:hl'] = '1';
-    const ls = lastState(), mig = recentIds(), oldGone = codes.every(pz => !('ctc-v3:' + pz.gid in __store));
     Date.now = realNow;
-    const ok = ids1.length === 5 && kept === 5 && idleGone && notListed && replay && resumed && ls && ls.gid === codes[2].gid && mig.length === 5 && mig[0].indexOf(codes[2].gid) === 0 && oldGone && __store['ctc-v3:hl'] === '1';
-    if (!ok) fail('recent games ' + JSON.stringify({ ids1: ids1.length, kept, idleGone, notListed, replay, resumed, ls: ls && ls.gid, mig: mig.length, first: mig[0], oldGone }));
-    console.log('recent games: kept', kept, '| untouched game dropped', idleGone, '| replay kept separately', replay, '| resume', resumed, '| migrated', mig.length, 'of 6 played, old keys removed', oldGone);
+    const ok = ids1.length === 5 && kept === 5 && idleGone && notListed && replay && resumed;
+    if (!ok) fail('recent games ' + JSON.stringify({ ids1: ids1.length, kept, idleGone, notListed, replay, resumed }));
+    console.log('recent games: kept', kept, '| untouched game dropped', idleGone, '| replay kept separately', replay, '| resume', resumed);
   }
   // 8. moving saved games between copies of the site (Safari to the home screen on iPhone)
   { const snap = JSON.stringify(Object.keys(__store).sort().map(k => [k, __store[k]]));
