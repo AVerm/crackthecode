@@ -2,7 +2,7 @@
 // Network first: a player who is online always gets the newest version, exactly as without this file.
 // Offline, or when the network takes more than a few seconds, the last copy seen is served instead.
 // The build stamps BUILD below, so every release replaces this worker and clears the old copy.
-const BUILD = '4511be16', CACHE = 'ctc-' + BUILD, WAIT_MS = 4000;
+const BUILD = '7efabc00', CACHE = 'ctc-' + BUILD, WAIT_MS = 4000;
 const CORE = ['./', 'index.html', '404.html', 'manifest.webmanifest', 'favicon.svg', 'favicon-dark.svg', 'favicon.ico', 'favicon-dark.ico',
   'apple-touch-icon.png', 'apple-touch-icon-dark.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'];
 

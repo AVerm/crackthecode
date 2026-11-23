@@ -14,9 +14,9 @@ let P = null, S = null, view = 'setup';
 const ui = { pending: false, msg: '', bad: false, step: null, hint: false, menu: false };
 const form = { gotd: null, note: '', gdate: '', code: '', codeBad: false, rows: [{ p: '', k: '' }, { p: '', k: '' }, { p: '', k: '' }, { p: '', k: '' }], report: null, show: false };
 const LS = {   // every saved game and setting, under KEY; storage that is blocked reads as empty
-  get(k) { try { return localStorage.getItem(KEY + ':' + k); } catch (e) { return null; } },
-  set(k, v) { try { localStorage.setItem(KEY + ':' + k, v); return true; } catch (e) { return false; } },
-  del(k) { try { localStorage.removeItem(KEY + ':' + k); } catch (e) {} },
+  get(k) { try { return localStorage.getItem(KEY + ':' + k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(KEY + ':' + k, v); return true; } catch { return false; } },
+  del(k) { try { localStorage.removeItem(KEY + ':' + k); } catch {} },
   flag(k, d) { const v = this.get(k); return v === null ? d : v === '1'; },
   setFlag(k, v) { this.set(k, v ? '1' : '0'); } };
 let HL = LS.flag('hl', false), WORK = LS.flag('work', false);
@@ -132,11 +132,11 @@ const IDX = Array.from({ length: 125 }, (_, i) => i);
 // Choose active options for the given predicates. want = { single, uniq: true|false, excl: true|false|null (null = either) }.
 // Returns { masks, clean } where clean means no predicate could be dropped, or null if nothing fits within the budget.
 function findActive(pids, want, rng, budget) {
-  const n = pids.length, T = pids.map(pid => PRED[pid].o.map(o => CARD[o[1]].t));
-  const overlapAt = c => T.some(ts => { let k = 0; for (const t of ts) if (t[c] === '1') k++; return k > 1; });
+  const n = pids.length, tables = pids.map(pid => PRED[pid].o.map(o => CARD[o[1]].t));
+  const overlapAt = c => tables.some(ts => { let k = 0; for (const t of ts) if (t[c] === '1') k++; return k > 1; });
   let multi = [];
-  if (!want.single) { const wide = shuffled(IDX.slice(0, n).filter(i => T[i].length >= 3), rng); if (!wide.length) return null; multi = wide.slice(0, 1 + Math.floor(rng() * Math.min(2, wide.length))); }
-  const choices = T.map((ts, i) => {
+  if (!want.single) { const wide = shuffled(IDX.slice(0, n).filter(i => tables[i].length >= 3), rng); if (!wide.length) return null; multi = wide.slice(0, 1 + Math.floor(rng() * Math.min(2, wide.length))); }
+  const choices = tables.map((ts, i) => {
     const out = [];
     if (multi.includes(i)) {   // every pair of options, unless together they allow every code
       for (let a = 0; a < ts.length; a++) for (let b = a + 1; b < ts.length; b++) {
@@ -180,8 +180,8 @@ function gameOfDay(date) {
 // A game is listed once it has an evaluation; a game with none is kept only while it is the current game.
 const RECENT_MAX = 5;
 const gameId = s => s.id || (s.id = s.gid + '@' + s.startedAt);
-function readGame(id) { try { const s = JSON.parse(LS.get('g:' + id) || 'null'); if (s && s.v === 3 && s.def && gameId(s) === id) return s; } catch (e) {} return null; }
-function recentIds() { try { const a = JSON.parse(LS.get('recent') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function readGame(id) { try { const s = JSON.parse(LS.get('g:' + id) || 'null'); if (s && s.v === 3 && s.def && gameId(s) === id) return s; } catch {} return null; }
+function recentIds() { try { const a = JSON.parse(LS.get('recent') || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } }
 function recentGames() { return recentIds().map(readGame).filter(Boolean); }
 // first-time help: one-time tips, the first-visit block on the setup screen, and a small first puzzle
 function tipOnce(name, msg) { if (LS.get('tip-' + name)) return ''; LS.set('tip-' + name, '1'); return msg; }
@@ -209,7 +209,7 @@ function startGame(pz, showCount, forceNew, gotd) {
   if (showCount) S.showCount = true; noteAids();
   resetUi(); view = 'play'; save(); render();
 }
-function resume(state) { try { P = buildPuzzle(state.def.p, state.def.m); S = state; noteAids(); view = 'play'; resetUi(); return true; } catch (e) { return false; } }
+function resume(state) { try { P = buildPuzzle(state.def.p, state.def.m); S = state; noteAids(); view = 'play'; resetUi(); return true; } catch { return false; } }
 
 // ---------- play helpers ----------
 function known(c) { const m = {}, key = cs(c); S.rows.forEach((r, ri) => { if (cs(r.code) === key) for (const i in r.res) if (!(i in m)) m[i] = { val: r.res[i], row: ri }; }); return m; }
@@ -271,7 +271,7 @@ function solverRun(rows) {
       P.preds.forEach((p, i) => {   // D1: a digit value no remaining option allows
         if (!opts[i].size) return;
         for (let d = 0; d < 3; d++) {
-          const gone = []; let flag = false, left = Array.from(opts[i]);
+          const gone = []; let flag = false; const left = Array.from(opts[i]);
           for (const v of Array.from(dom[d])) if (dom[d].size > 1 && !left.some(k => support(i, k, d, v))) { if (left.some(k => support(i, k, d, v, true))) flag = true; dom[d].delete(v); note.d.push(d + ':' + v); gone.push(v); ch = true; }
           if (!gone.length) continue;
           const what = left.length === 1 ? LET[i] + ' must be ' + q(i, left[0]) : LET[i] + ' must be one of ' + left.map(k => q(i, k)).join(', ');
@@ -465,7 +465,7 @@ function predSelect(i) {
   });
   return h + '</select>';
 }
-function formPuzzle() { const st = form.rows.map((r, i) => rowStatus(i)); if (st.some(s => !s.ok)) return null; try { return buildPuzzle(st.map(s => s.pid), st.map(s => s.mask)); } catch (e) { return null; } }
+function formPuzzle() { const st = form.rows.map((r, i) => rowStatus(i)); if (st.some(s => !s.ok)) return null; try { return buildPuzzle(st.map(s => s.pid), st.map(s => s.mask)); } catch { return null; } }
 function checkForm() { const pz = formPuzzle(); form.report = pz ? { pz } : { error: 'Every line needs a predicate number and a checker number that belongs to it.' }; }
 function codeProblem(text) {   // a specific reason a code-box entry was refused
   const words = String(text).trim().split(/\s+/);
@@ -803,7 +803,7 @@ function showText(title, text) {
   modal.querySelector('textarea').value = text;
 }
 // copy to the clipboard; resolves to whether it worked
-function copy(text) { try { return navigator.clipboard.writeText(text).then(() => true, () => false); } catch (e) { return Promise.resolve(false); } }
+function copy(text) { try { return navigator.clipboard.writeText(text).then(() => true, () => false); } catch { return Promise.resolve(false); } }
 function copyInDialog(text, area) {   // reports in the dialog's note; if copying is blocked, selects the text to copy by hand
   const note = modal.querySelector('#txtnote');
   copy(text).then(ok => { if (!ok && area) { area.focus(); area.select(); } if (note) note.textContent = ok ? 'Copied.' : 'Copying is blocked here. The text is selected; copy it by hand.'; });
@@ -997,7 +997,7 @@ app.addEventListener('contextmenu', e => {
 // ---------- home screen: offline copy, install prompt, moving saved games ----------
 // Only on the real site: the artifact preview neither installs nor works offline.
 const SITE = /(^|\.)crackthe\.xyz$|\.github\.io$|^localhost$|^127\.0\.0\.1$/.test(location.hostname);
-const STANDALONE = (() => { try { return (!!window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; } catch (e) { return false; } })();
+const STANDALONE = (() => { try { return (!!window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; } catch { return false; } })();
 const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1), ANDROID = /Android/.test(navigator.userAgent);
 const INSTALL_AFTER = 10;   // loads in the browser before the game offers the home screen
 let installEvent = null;
@@ -1009,16 +1009,16 @@ const askInstall = () => SITE && (IOS || ANDROID) && !STANDALONE && (+LS.get('lo
 const MOVE_HEAD = TITLE + ' saved games';
 function savesText() {   // every saved game and setting, as one block of text to paste into the home-screen copy
   const items = {};
-  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith(KEY + ':') && !/:(loads|install-)/.test(k)) items[k.slice(KEY.length + 1)] = localStorage.getItem(k); } } catch (e) {}
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith(KEY + ':') && !/:(loads|install-)/.test(k)) items[k.slice(KEY.length + 1)] = localStorage.getItem(k); } } catch {}
   return MOVE_HEAD + '\n' + btoa(unescape(encodeURIComponent(JSON.stringify({ v: 1, items })))).replace(/(.{64})/g, '$1\n').trim();
 }
 function loadSaves(text) {   // returns how many games were added, or -1 if the text is not a saved-games block
   const at = text.indexOf(MOVE_HEAD); if (at < 0) return -1;
-  let d; try { d = JSON.parse(decodeURIComponent(escape(atob(text.slice(at + MOVE_HEAD.length).replace(/\s+/g, ''))))); } catch (e) { return -1; }
+  let d; try { d = JSON.parse(decodeURIComponent(escape(atob(text.slice(at + MOVE_HEAD.length).replace(/\s+/g, ''))))); } catch { return -1; }
   if (!d || d.v !== 1 || !d.items) return -1;
   const before = new Set(recentIds());
   Object.keys(d.items).forEach(k => { if (k !== 'recent' && k !== 'last' && LS.get(k) === null) LS.set(k, d.items[k]); });
-  let ids = []; try { ids = JSON.parse(d.items.recent || '[]'); } catch (e) {}
+  let ids = []; try { ids = JSON.parse(d.items.recent || '[]'); } catch {}
   const all = Array.from(new Set(recentIds().concat(ids))).map(readGame).filter(Boolean).sort((a, b) => b.startedAt - a.startedAt);
   all.slice(RECENT_MAX).forEach(s => LS.del('g:' + gameId(s)));
   const keep = all.slice(0, RECENT_MAX).map(gameId); LS.set('recent', JSON.stringify(keep));
@@ -1040,7 +1040,7 @@ function showInstall() {
     + (IOS && games ? '<button class="ghost" data-m="copy">Copy my games</button>' : '') + (!IOS && installEvent ? '<button class="ghost" data-m="0">Not now</button><button class="primary" data-m="inst">Install</button>' : '<button class="primary" data-m="0">Done</button>') + '</div></div>', async e => {
     const b = e.target.closest('[data-m]'); if (!b) { if (e.target === modal) { closeModal(); render(); } return; }
     if (b.dataset.m === 'copy') { copyInDialog(savesText(), null); return; }
-    if (b.dataset.m === 'inst' && installEvent) { const ev = installEvent; installEvent = null; try { await ev.prompt(); } catch (err) {} }
+    if (b.dataset.m === 'inst' && installEvent) { const ev = installEvent; installEvent = null; try { await ev.prompt(); } catch {} }
     closeModal(); render();
   }, '.primary, .ghost', () => { closeModal(); render(); });
 }
@@ -1055,7 +1055,7 @@ async function checkUpdate(el) {   // reached only from the very end of How to p
     if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
     if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
     location.reload();
-  } catch (e) { el.textContent = 'Could not reach the site. Try again when you are online.'; }
+  } catch { el.textContent = 'Could not reach the site. Try again when you are online.'; }
 }
 
 function start() {
