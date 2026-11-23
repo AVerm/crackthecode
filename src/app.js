@@ -93,14 +93,15 @@ function tmNumbers(p) {
   return out;
 }
 TM.numbers = tmNumbers(TM.pack);
+const asNum = str => { const s = String(str).trim(); return /^\d+$/.test(s) ? +s : null; };   // a typed number, or null
 function resolvePred(str) {
-  const s = String(str).trim(); if (!/^\d+$/.test(s)) return null; const n = +s;
+  const n = asNum(str); if (n === null) return null;
   if (PRED[n]) return { id: n, via: null };
   if (TM.criteria[n]) return { id: TM.criteria[n], via: n };
   return null;
 }
 function resolveCard(str) {
-  const s = String(str).trim(); if (!/^\d+$/.test(s)) return null; const n = +s;
+  const n = asNum(str); if (n === null) return null;
   if (NUM2CARD[n]) return NUM2CARD[n];
   if (TM.numbers[n]) return TM.numbers[n];
   return null;
@@ -205,9 +206,10 @@ function noteAids() { if (WORK) S.aids.w = true; if (HL) S.aids.h = true; }
 function startGame(pz, showCount, forceNew, gotd) {
   P = pz; const old = forceNew ? null : findGame(pz.gid);
   S = old && !old.won ? old : fresh(pz, showCount, gotd);
-  if (showCount) S.showCount = true; noteAids();
-  resetUi(); view = 'play'; save(); render();
+  if (showCount) S.showCount = true;
+  enterPlay();
 }
+function enterPlay() { noteAids(); resetUi(); view = 'play'; save(); render(); }   // S and P are set: show the game
 function resume(state) { try { P = buildPuzzle(state.def.p, state.def.m); S = state; noteAids(); view = 'play'; resetUi(); return true; } catch { return false; } }
 
 // ---------- play helpers ----------
@@ -432,7 +434,7 @@ function showImport() {
     const area = modal.querySelector('textarea'), moved = loadSaves(area.value);
     if (moved >= 0) { closeModal(); view = 'setup'; render(); announce('Moved ' + plural(moved, 'saved game') + '.'); const g = document.querySelector('.recent'); if (g) g.scrollIntoView({ block: 'center' }); return; }
     const r = importTable(area.value); if (r.error) { modal.querySelector('#txtnote').textContent = r.error; return; }
-    closeModal(); P = r.pz; S = r.state; noteAids(); resetUi(); view = 'play'; save(); render();
+    closeModal(); P = r.pz; S = r.state; enterPlay();
   }, 'textarea');
 }
 
@@ -641,7 +643,7 @@ function renderPlay() {
   app.innerHTML = playHeader() + factsHtml() + tableHtml()
     + (!S.won && ui.hint ? hintHtml() : '') + (S.won ? endHtml() : worksheetHtml() + '<div class="lbl">Aids</div>' + optsHtml())
     + (S.won ? themeHtml() : '');   // a finished game has no aids to set, but the theme stays at the bottom
-  if (fk) { const el = app.querySelector('[data-fk="' + fk + '"]'); if (el && !el.disabled) el.focus({ preventScroll: true }); }
+  focusFk(fk);
   { // keep the chosen step in view when the chart scrolls
     const on = app.querySelector('.spc .slot.on'), box = on && on.closest('.spchart');
     if (box && box.scrollWidth > box.clientWidth) box.scrollLeft = Math.max(0, on.offsetLeft + on.offsetWidth / 2 - box.clientWidth / 2);
@@ -771,9 +773,10 @@ function openModal(html, onclick, focus, onEscape) {
   modal.innerHTML = html; modal.hidden = false; modal.onclick = onclick; modal.onEscape = onEscape || closeModal;
   const f = modal.querySelector(focus); if (f) f.focus();
 }
+function focusFk(fk) { const el = fk && document.querySelector('[data-fk="' + fk + '"]'); if (el && !el.disabled) el.focus({ preventScroll: true }); }   // focus a control by its data-fk, after a re-render
 function closeModal() {
   modal.hidden = true; modal.innerHTML = ''; modal.onclick = null; modal.onEscape = null;
-  const el = opener && document.querySelector('[data-fk="' + opener + '"]'); if (el && !el.disabled) el.focus({ preventScroll: true });
+  focusFk(opener);
 }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !modal.hidden && modal.onEscape) { modal.onEscape(); return; }
