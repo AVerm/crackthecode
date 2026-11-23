@@ -130,8 +130,8 @@ const src = page.slice(page.indexOf('<script>') + 8, page.lastIndexOf('</script>
     let clock = 1000; const realNow = Date.now; Date.now = () => (clock += 1000);
     codes.forEach(pz => { startGame(pz, false, true); play1(); });
     const ids1 = recentIds(), kept = Object.keys(__store).filter(k => k.indexOf('ctc-v3:g:') === 0).length;
-    startGame(codes[0], false, true); const idle = gameId(S); startGame(codes[1], false, true);   // two untouched games: neither listed, the first deleted
-    const idleGone = !__store['ctc-v3:g:' + idle], notListed = recentIds().length === 5 && !recentIds().includes(gameId(S));
+    startGame(codes[0], false, true); const idle = S.id; startGame(codes[1], false, true);   // two untouched games: neither listed, the first deleted
+    const idleGone = !__store['ctc-v3:g:' + idle], notListed = recentIds().length === 5 && !recentIds().includes(S.id);
     const top = recentGames()[0]; resume(top); S.won = true; save(); startGame(P, false, false); play1();   // replaying a finished code adds a game
     const replay = recentGames().filter(s => s.gid === top.gid).length === 2;
     startGame(codes[6], false, false); const resumed = S.rows.length === 1;   // an unfinished game is resumed, not restarted

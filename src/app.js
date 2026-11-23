@@ -176,11 +176,10 @@ function gameOfDay(date) {
 }
 
 // ---------- storage ----------
-// Games are kept by play-through, newest first, and only the last RECENT_MAX are kept: older ones are deleted.
+// Games are kept by play-through, newest first, and only the last RECENT_MAX are kept: older ones are deleted. Each game's id is its code and start time, gid@startedAt.
 // A game is listed once it has an evaluation; a game with none is kept only while it is the current game.
 const RECENT_MAX = 5;
-const gameId = s => s.id || (s.id = s.gid + '@' + s.startedAt);
-function readGame(id) { try { const s = JSON.parse(LS.get('g:' + id) || 'null'); if (s && s.v === 3 && s.def && gameId(s) === id) return s; } catch {} return null; }
+function readGame(id) { try { const s = JSON.parse(LS.get('g:' + id) || 'null'); if (s && s.v === 3 && s.def && s.id === id) return s; } catch {} return null; }
 function recentIds() { try { const a = JSON.parse(LS.get('recent') || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } }
 function recentGames() { return recentIds().map(readGame).filter(Boolean); }
 // first-time help: one-time tips, the first-visit block on the setup screen, and a small first puzzle
@@ -190,7 +189,7 @@ const FIRST_PUZZLE = (BANKMETA.find(g => g.n === 4 && g.single && !g.overlap && 
 function continueGame() { if (S && P && !S.won) return S; return recentGames().find(s => !s.won && s.rows && s.rows.length) || null; }
 function findGame(gid) { return recentGames().find(s => s.gid === gid) || null; }
 function save() {
-  const id = gameId(S), was = LS.get('last'); let ids = recentIds().filter(x => x !== id);
+  const id = S.id, was = LS.get('last'); let ids = recentIds().filter(x => x !== id);
   if (S.rows.length) { ids.unshift(id); ids.slice(RECENT_MAX).forEach(x => LS.del('g:' + x)); ids = ids.slice(0, RECENT_MAX); LS.set('recent', JSON.stringify(ids)); }
   if (was && was !== id && !ids.includes(was)) LS.del('g:' + was);   // an untouched game you walked away from
   LS.set('g:' + id, JSON.stringify(S)); LS.set('last', id);
@@ -202,7 +201,7 @@ function fresh(pz, showCount, gotd) {
     marks: { d: [0, 1, 2].map(() => [0, 0, 0, 0, 0]), o: pz.preds.map(q => q.options.map(() => 0)) }, turns: 0, evals: 0, wrong: 0, contra: [], won: false };
 }
 function resetUi() { ui.msg = ''; ui.bad = false; ui.pending = false; ui.step = null; ui.hint = false; }
-function noteAids() { if (!S.aids) S.aids = { w: false, h: false }; if (WORK) S.aids.w = true; if (HL) S.aids.h = true; }
+function noteAids() { if (WORK) S.aids.w = true; if (HL) S.aids.h = true; }
 function startGame(pz, showCount, forceNew, gotd) {
   P = pz; const old = forceNew ? null : findGame(pz.gid);
   S = old && !old.won ? old : fresh(pz, showCount, gotd);
@@ -366,7 +365,7 @@ function verdictNow() {
 function fmtStart(ms) { const d = new Date(ms); return ymd(d) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
 function fmtDur(ms) { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 const SETTINGS_KEY = 'S one secret option per predicate, E answer fits one option per card, U one solution, W workbook does work, H highlighter; + yes, - no.';
-function settingsLine() { const a = S.aids || { w: false, h: false }, f = b => b ? '+' : '-'; return 'Settings S' + f(P.singleOption) + ' E' + f(!P.overlap) + ' U' + f(P.solutions === 1) + ' W' + f(a.w) + ' H' + f(a.h); }
+function settingsLine() { const a = S.aids, f = b => b ? '+' : '-'; return 'Settings S' + f(P.singleOption) + ' E' + f(!P.overlap) + ' U' + f(P.solutions === 1) + ' W' + f(a.w) + ' H' + f(a.h); }
 function headLines(withTime) { return [TITLE + ' ' + P.gid + (withTime ? ' ' + fmtStart(S.startedAt) : '')].concat(S.gotd ? ['Game of the day ' + S.gotd] : [], [settingsLine()], S.hint ? ['Hint used'] : [], S.imported ? ['Imported table'] : []); }
 function shareText(v) {
   let line = '';
@@ -574,7 +573,7 @@ function bankHtml() {
 
 function gameRow(s, what, cls, label, attr) {   // a saved game: its code, its day, how far it got, and a button
   const d = new Date(s.startedAt), day = s.gotd ? 'Game of the day ' + s.gotd : isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  return '<div class="start recent"><div class="recinfo"><span class="code">' + esc(s.gid) + '</span><span>' + esc(day + ' \u00b7 ' + what) + '</span></div><button class="' + cls + '" data-act="recent" data-id="' + esc(gameId(s)) + '"' + attr + '>' + label + '</button></div>';
+  return '<div class="start recent"><div class="recinfo"><span class="code">' + esc(s.gid) + '</span><span>' + esc(day + ' \u00b7 ' + what) + '</span></div><button class="' + cls + '" data-act="recent" data-id="' + esc(s.id) + '"' + attr + '>' + label + '</button></div>';
 }
 function modesWord() { const on = MODES.filter(m => MODE[m[0]]).length; return 'Game modes (' + (on === 3 ? 'all three on' : on + ' of 3 on') + ')'; }
 const fold = (open, label) => (open ? '▾ ' : '▸ ') + label;
@@ -619,7 +618,7 @@ function buildHtml() {
     + 'Turing Machine criteria numbers (1 to 48) and verification numbers (201 to 798) are converted automatically.</p>';
 }
 function recentHtml(cont) {
-  const rec = recentGames().filter(s => !cont || gameId(s) !== gameId(cont));
+  const rec = recentGames().filter(s => !cont || s.id !== cont.id);
   if (!rec.length) return '';
   return '<div class="lbl">Recent games <span class="note">only the last ' + RECENT_MAX + ' are kept</span></div>'
     + rec.map(s => s.won ? gameRow(s, 'won in ' + plural(s.turns, 'turn'), 'ghost', 'Review', '') : gameRow(s, 'turn ' + (s.turns + 1) + ', in progress', 'primary', 'Resume', '')).join('');
@@ -917,7 +916,7 @@ const ACTIONS = {
     if (rv) { S.rival = rv; save(); render(); }
   },
   count: async () => { if (await ask('Show how many solutions this puzzle has? You can also play without knowing.', 'Show count')) { form.show = true; render(); } },
-  recent: b => { const s = readGame(b.dataset.id); if (s && resume(s)) LS.set('last', gameId(s)); render(); },
+  recent: b => { const s = readGame(b.dataset.id); if (s && resume(s)) LS.set('last', s.id); render(); },
   import: () => showImport(),
   fold: b => { form[b.dataset.f] = !form[b.dataset.f]; render(); },
   add: () => { if (form.rows.length < 8) form.rows.push({ p: '', k: '' }); form.report = null; form.code = ''; render(); },
@@ -1020,8 +1019,8 @@ function loadSaves(text) {   // returns how many games were added, or -1 if the 
   Object.keys(d.items).forEach(k => { if (k !== 'recent' && k !== 'last' && LS.get(k) === null) LS.set(k, d.items[k]); });
   let ids = []; try { ids = JSON.parse(d.items.recent || '[]'); } catch {}
   const all = Array.from(new Set(recentIds().concat(ids))).map(readGame).filter(Boolean).sort((a, b) => b.startedAt - a.startedAt);
-  all.slice(RECENT_MAX).forEach(s => LS.del('g:' + gameId(s)));
-  const keep = all.slice(0, RECENT_MAX).map(gameId); LS.set('recent', JSON.stringify(keep));
+  all.slice(RECENT_MAX).forEach(s => LS.del('g:' + s.id));
+  const keep = all.slice(0, RECENT_MAX).map(s => s.id); LS.set('recent', JSON.stringify(keep));
   if (!LS.get('last') && d.items.last && readGame(d.items.last)) LS.set('last', d.items.last);
   return keep.filter(id => !before.has(id)).length;
 }
