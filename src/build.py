@@ -8,7 +8,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent; WWW = HERE.parent / "www"
 sys.path.insert(0, str(HERE))
 import generate_puzzles as G
-lib = json.load(open(HERE / "library.json", encoding="utf-8")); tm = json.load(open(HERE / "tm_compat.json", encoding="utf-8"))
+src = lambda name: (HERE / name).read_text(encoding="utf-8")   # a source file's text
+lib = json.loads(src("library.json")); tm = json.loads(src("tm_compat.json"))
 cards = {c[0]: c for c in lib["cards"]}; preds = lib["predicates"]; byid = {p["id"]: p for p in preds}
 counts = {p["id"]: len(p["options"]) for p in preds}; num2card = {n: c[0] for c in lib["cards"] for n in c[1]}
 LIB = {"preds": [{"id": p["id"], "text": p["text"], "o": [[o[0], o[1]] + o[3:4] for o in p["options"]]} for p in preds], "cards": [[c[0], c[1], c[3]] for c in lib["cards"]]}
@@ -52,7 +53,7 @@ TMGAMES = """4 447 9 646 11 566 14 322|3 564 7 355 10 635 14 720|4 677 9 217 13 
 TMBANK = []
 for gi, g in enumerate(TMGAMES.split("|")):
     v = list(map(int, g.split())); pids, masks = [], []
-    for crit, num in zip(v[0::2], v[1::2]):
+    for crit, num in zip(v[0::2], v[1::2], strict=True):
         pid = TM["criteria"][crit]; card = TM["numbers"][num]; opts = byid[pid]["options"]
         j = [j for j, o in enumerate(opts) if o[1] == card]; assert len(j) == 1, ("TM game", gi + 1, crit, num)
         pids.append(pid); masks.append(1 << j[0])
@@ -68,20 +69,20 @@ for multi in (False, True):
                     if pz["game"] not in BANK and pz["game"] not in TMBANK and pz["overlap"] == overlap: BANK.append(pz["game"]); break
 data = "const LIB=" + json.dumps(LIB, ensure_ascii=False, separators=(",", ":")) + ";\nconst TM=" + json.dumps({"criteria": TM["criteria"], "pack": TM_PACK}, separators=(",", ":")) + ";\nconst BANK=" + json.dumps(BANK, separators=(",", ":")) + ",TMBANK=" + json.dumps(TMBANK, separators=(",", ":")) + ";\n"
 assert "</" not in data
-t = open(HERE / "template.html", encoding="utf-8").read(); css = open(HERE / "style.css", encoding="utf-8").read(); js = open(HERE / "app.js", encoding="utf-8").read()
+t = src("template.html"); css = src("style.css"); js = src("app.js")
 t = re.sub(r"<style>.*?</style>", lambda m: "<style>\n" + css + "</style>", t, flags=re.S)
 # BUILD names this release: it changes whenever anything that goes into the page or the worker changes
 import hashlib
-sw = open(HERE / "sw.js", encoding="utf-8").read()
+sw = src("sw.js")
 BUILD = hashlib.sha256((data + css + js + t + sw).encode("utf-8")).hexdigest()[:8]
 data += 'const BUILD = "' + BUILD + '";\n'
 t = re.sub(r"<script>.*?</script>", lambda m: "<script>\n" + data + js + "</script>", t, flags=re.S)
 out = Path(sys.argv[1]) if len(sys.argv) > 1 else WWW / "index.html"
-open(out, "w", encoding="utf-8", newline="\n").write(t)
+out.write_text(t, encoding="utf-8", newline="\n")
 # the not-found page Pages shows for any missing address: same styles and theme, links back to the game
 key = re.search(r"const KEY = '([^']+)'", js).group(1)
-nf = open(HERE / "404.html", encoding="utf-8").read().replace("/*CSS*/", css).replace("/*KEY*/", repr(key))
+nf = src("404.html").replace("/*CSS*/", css).replace("/*KEY*/", repr(key))
 if len(sys.argv) <= 1:
-    open(WWW / "404.html", "w", encoding="utf-8", newline="\n").write(nf)
-    open(WWW / "sw.js", "w", encoding="utf-8", newline="\n").write(sw.replace("/*BUILD*/", BUILD))
+    (WWW / "404.html").write_text(nf, encoding="utf-8", newline="\n")
+    (WWW / "sw.js").write_text(sw.replace("/*BUILD*/", BUILD), encoding="utf-8", newline="\n")
 print("build", BUILD, ";", len(BANK), "starter +", len(TMBANK), "manual puzzles;", len(t), "bytes; data", len(data), "; css", len(css), "; js", len(js), "; list strings", sum(len(b) for b in BANK + TMBANK), "chars")

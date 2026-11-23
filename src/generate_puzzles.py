@@ -36,7 +36,7 @@ def game_code(option_counts, pids, masks, dashes=True):
         nonlocal v, mult
         v += d * mult; mult *= radix
     push(len(pids) - 1, 8)
-    for pid, m in zip(pids, masks):
+    for pid, m in zip(pids, masks, strict=True):
         push(pid - PID0, NPRED_V1); push(m - 1, (1 << option_counts[pid]) - 1)
     digits = []
     while True:
@@ -67,7 +67,7 @@ def generate(lib, k, pool, lo, hi, allow_redundant, max_options, rng, one_code=F
             if not wide: continue
             for i in rng.sample(wide, rng.randint(1, min(2, len(wide)))):
                 active[i] = sorted(rng.sample(range(len(pick[i]["options"])), 2))
-        single = any(len(a) == 1 and bin(tmask[p["options"][a[0]][1]]).count("1") == 1 for p, a in zip(pick, active))
+        single = any(len(a) == 1 and bin(tmask[p["options"][a[0]][1]]).count("1") == 1 for p, a in zip(pick, active, strict=True))
         if one_code:
             holders = [(i, j) for i, p in enumerate(pick) for j, o in enumerate(p["options"]) if bin(tmask[o[1]]).count("1") == 1]
             if not holders: continue
@@ -81,7 +81,7 @@ def generate(lib, k, pool, lo, hi, allow_redundant, max_options, rng, one_code=F
             if not ok: continue
             single = True
         pm = []
-        for p, a in zip(pick, active):
+        for p, a in zip(pick, active, strict=True):
             m = 0
             for j in a: m |= tmask[p["options"][j][1]]
             pm.append(m)
@@ -93,19 +93,19 @@ def generate(lib, k, pool, lo, hi, allow_redundant, max_options, rng, one_code=F
         if not lo <= n <= hi:
             continue
         if not allow_redundant and not single:
-            def without(j):
+            def without(pm, j):   # the codes left with predicate j dropped
                 rest = FULL
                 for i, m in enumerate(pm):
                     if i != j: rest &= m
                 return rest
-            if any(without(j) == sol for j in range(k)):
+            if any(without(pm, j) == sol for j in range(k)):
                 continue
         pids = [p["id"] for p in pick]; masks = [sum(1 << j for j in a) for a in active]
         return {"game": game_code(counts, pids, masks),
                 "predicates": pids,
-                "checkers": [[rng.choice(cards[p["options"][j][1]][1]) for j in a] for p, a in zip(pick, active)],
+                "checkers": [[rng.choice(cards[p["options"][j][1]][1]) for j in a] for p, a in zip(pick, active, strict=True)],
                 "texts": [p["text"] for p in pick],
-                "active": [" OR ".join(p["options"][j][0] for j in a) for p, a in zip(pick, active)],
+                "active": [" OR ".join(p["options"][j][0] for j in a) for p, a in zip(pick, active, strict=True)],
                 "solutions": solutions_of(sol),
                 "multi_active": any(len(a) > 1 for a in active),
                 "overlap": any(sum(tmask[o[1]] >> (124 - i) & 1 for o in p["options"]) > 1 for i in range(125) if sol >> (124 - i) & 1 for p in pick)}
@@ -159,7 +159,7 @@ def main():
         print("  Solutions   " + ("one" if len(p["solutions"]) == 1 else "more than one"))
         print("  Active      " + ("two options on some predicate" if p["multi_active"] else "one option per predicate"))
         print("  Answer fits " + ("more than one listed option on at least one predicate" if p["overlap"] else "exactly one listed option on every predicate"))
-        for i, (pid, chk, text) in enumerate(zip(p["predicates"], p["checkers"], p["texts"])):
+        for i, (pid, chk, text) in enumerate(zip(p["predicates"], p["checkers"], p["texts"], strict=True)):
             print(f"    {'PQRSTUVW'[i]}  {pid}  {' '.join(map(str, chk)):<10} {text}" + (f"   ->  {p['active'][i]}" if a.reveal else ""))
         if a.reveal:
             print("  Solution    " + ", ".join(p["solutions"]))
